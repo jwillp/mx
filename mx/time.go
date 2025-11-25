@@ -1,24 +1,10 @@
-package explo
+package mx
 
-import "time"
-
-type Clock interface {
-	Now() time.Time
-}
-
-type ClockFunc func() time.Time
-
-func (f ClockFunc) Now() time.Time { return f() }
-
-// NewRealTimeClock returns the main implementation of a [Clock] that returns the
-// time of the running operating system in a given time zone. if nil is passed,
-// will default to the local time zone.
-func NewRealTimeClock(tz *time.Location) ClockFunc {
-	if tz != nil {
-		time.Local = tz
-	}
-	return time.Now
-}
+import (
+	"github.com/morebec/misas/misas"
+	"sync/atomic"
+	"time"
+)
 
 // ManualClock implementation of a clock that allows to manually specify the
 // values that the clock returns. This implementation's primary use case is in
@@ -45,11 +31,16 @@ func (c *ManualClock) Now() time.Time {
 }
 
 // HotSwappableClock is an implementation of a clock that allows to change its
-// underlying clock at runtime.
+// underlying clock at runtime using atomic operations for concurrency safety.
 type HotSwappableClock struct {
-	Clock
+	clock atomic.Value
 }
 
-func NewHotSwappableClock(clock Clock) *HotSwappableClock { return &HotSwappableClock{Clock: clock} }
+func NewHotSwappableClock(clock misas.Clock) *HotSwappableClock {
+	hc := &HotSwappableClock{}
+	hc.clock.Store(clock)
+	return hc
+}
 
-func (hc *HotSwappableClock) Swap(clock Clock) { hc.Clock = clock }
+func (hc *HotSwappableClock) Now() time.Time         { return hc.clock.Load().(misas.Clock).Now() }
+func (hc *HotSwappableClock) Swap(clock misas.Clock) { hc.clock.Store(clock) }

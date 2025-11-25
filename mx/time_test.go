@@ -1,4 +1,4 @@
-package explo_test
+package mx_test
 
 import (
 	"github.com/morebec/mx"
