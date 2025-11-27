@@ -36,6 +36,7 @@ func (s *Supervisor) WithApplicationSubsystem(app ApplicationSubsystem, options 
 }
 
 func (s *Supervisor) Initialize(ctx context.Context) error {
+	Log(ctx).Debug("Initializing supervised applications...", slog.Int("nbApplications", len(s.supervisedApplications)))
 	for _, app := range s.supervisedApplications {
 		appCtx := newSubsystemContext(ctx, SubsystemInfo{Name: app.Name()})
 		if err := app.Initialize(appCtx); err != nil {

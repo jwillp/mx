@@ -87,6 +87,7 @@ func (h loggingSystemEventHandler) Handle(ctx context.Context, event misas.Event
 		)
 		logger.Info("Mx Framework v" + Version)
 		if e.Debug {
+			logger.Debug("Debug mode is enabled")
 			logger.Warn("SYSTEM IS IN DEBUG MODE, TURN OFF FOR PRODUCTION")
 		}
 		logger.Info("System initializing ...")
