@@ -30,12 +30,15 @@ func (s *Supervisor) WithApplicationSubsystem(app ApplicationSubsystem, options 
 	supervisedApp := &supervisedApplicationSubsystem{
 		ApplicationSubsystem: newManagedApplicationSubsystem(app, systemEventBus(s.eventBus), s.clock),
 		Options:              *options,
+		eventBus:             systemEventBus(s.eventBus),
 	}
 	s.supervisedApplications[app.Name()] = supervisedApp
 	return s
 }
 
 func (s *Supervisor) Initialize(ctx context.Context) error {
+	s.eventBus.RegisterHandler(supervisorLoggingEventHandler{})
+
 	Log(ctx).Debug("Initializing supervised applications...", slog.Int("nbApplications", len(s.supervisedApplications)))
 	for _, app := range s.supervisedApplications {
 		appCtx := newSubsystemContext(ctx, SubsystemInfo{Name: app.Name()})

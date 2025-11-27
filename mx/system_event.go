@@ -142,6 +142,7 @@ func (e SubsystemTeardownEndedEvent) TypeName() misas.EventTypeName {
 // instead of returning them to the caller.
 type systemEventBus interface {
 	Publish(ctx context.Context, event misas.Event)
+	RegisterHandler(handler misas.EventHandler)
 }
 
 type defaultSystemEventBus struct {
@@ -149,11 +150,9 @@ type defaultSystemEventBus struct {
 }
 
 func newSystemEventBus() systemEventBus {
-	eventBus := misas.NewInMemoryEventBus()
-	eventBus.RegisterHandler(loggingSystemEventHandler{})
-	return &defaultSystemEventBus{
-		eb: eventBus,
-	}
+	eb := &defaultSystemEventBus{eb: misas.NewInMemoryEventBus()}
+	eb.RegisterHandler(loggingSystemEventHandler{})
+	return eb
 }
 
 func (s *defaultSystemEventBus) Publish(ctx context.Context, event misas.Event) {
@@ -161,6 +160,10 @@ func (s *defaultSystemEventBus) Publish(ctx context.Context, event misas.Event) 
 	if err != nil {
 		Log(ctx).Error("an internal system event handler failed", slog.Any(logKeyError, err))
 	}
+}
+
+func (s *defaultSystemEventBus) RegisterHandler(handler misas.EventHandler) {
+	s.eb.RegisterHandler(handler)
 }
 
 type hotSwappableSystemEventBus struct {
@@ -181,4 +184,9 @@ func (b *hotSwappableSystemEventBus) Publish(ctx context.Context, event misas.Ev
 
 func (b *hotSwappableSystemEventBus) Swap(eb systemEventBus) {
 	b.eb.Store(eb)
+}
+
+func (b *hotSwappableSystemEventBus) RegisterHandler(handler misas.EventHandler) {
+	deb := b.eb.Load().(systemEventBus)
+	deb.RegisterHandler(handler)
 }

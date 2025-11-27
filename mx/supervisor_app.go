@@ -3,7 +3,6 @@ package mx
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -13,9 +12,17 @@ type SupervisionOptions struct {
 	RestartPolicy *RestartPolicy
 }
 
+// SupervisedApp is a control interface for a supervised application subsystem
+type SupervisedApp interface {
+	Stop()
+	Start()
+	Terminate()
+}
+
 type supervisedApplicationSubsystem struct {
 	ApplicationSubsystem
-	Options SupervisionOptions
+	Options  SupervisionOptions
+	eventBus systemEventBus
 
 	// lazy init for channels
 	initOnce sync.Once
@@ -80,10 +87,16 @@ func (s *supervisedApplicationSubsystem) Run(ctx context.Context) error {
 				} else if policy.MaxRetryDuration > 0 {
 					reason = "max retry duration exceeded"
 				}
-				Log(ctx).Error(
-					fmt.Sprintf("giving up restart of supervised application subsystem %q: %s", s.Name(), reason),
-					slog.Any(logKeyError, err),
-				)
+
+				state := policy.GetState()
+				s.eventBus.Publish(ctx, SubsystemMaxRestartReachedEvent{
+					ApplicationName: s.Name(),
+					RestartCount:    state.AttemptCount,
+					MaxAttempts:     policy.MaxRetries,
+					Reason:          reason,
+					Error:           err,
+					ReachedAt:       now,
+				})
 				return err
 			}
 
@@ -91,13 +104,14 @@ func (s *supervisedApplicationSubsystem) Run(ctx context.Context) error {
 			policy.RecordAttempt()
 			state := policy.GetState()
 
-			Log(ctx).Warn(
-				fmt.Sprintf("restarting supervised application subsystem %q", s.Name()),
-				slog.Int("attemptNumber", state.AttemptCount),
-				slog.Int("failuresInWindow", state.FailureCount),
-				slog.Duration("restartDelay", delay),
-				slog.Any(logKeyError, err),
-			)
+			s.eventBus.Publish(ctx, SubsystemWillRestartEvent{
+				ApplicationName: s.Name(),
+				RestartCount:    state.AttemptCount,
+				MaxAttempts:     policy.MaxRetries,
+				RestartDelay:    delay,
+				Error:           err,
+				StartedAt:       now,
+			})
 
 			select {
 			case <-time.After(delay):
@@ -106,6 +120,15 @@ func (s *supervisedApplicationSubsystem) Run(ctx context.Context) error {
 			case <-ctx.Done():
 				return ctx.Err()
 			}
+
+			s.eventBus.Publish(ctx, SubsystemRestartedEvent{
+				ApplicationName: s.Name(),
+				RestartCount:    state.AttemptCount,
+				MaxAttempts:     policy.MaxRetries,
+				Error:           nil,
+				StartedAt:       now,
+				EndedAt:         time.Now(),
+			})
 		}
 	}
 }
