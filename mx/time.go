@@ -38,7 +38,9 @@ type HotSwappableClock struct {
 
 func NewHotSwappableClock(clock misas.Clock) *HotSwappableClock {
 	hc := &HotSwappableClock{}
-	hc.clock.Store(clock)
+	if clock != nil {
+		hc.clock.Store(clock)
+	}
 	return hc
 }
 

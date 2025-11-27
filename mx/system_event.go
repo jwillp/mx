@@ -3,6 +3,7 @@ package mx
 import (
 	"context"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"github.com/morebec/misas/misas"
@@ -139,19 +140,45 @@ func (e SubsystemTeardownEndedEvent) TypeName() misas.EventTypeName {
 // systemEventBus is an internal event bus used to publish system events.
 // It differs from regular event buses in that it handles errors internally by logging them
 // instead of returning them to the caller.
-type systemEventBus struct{ eb misas.EventBus }
+type systemEventBus interface {
+	Publish(ctx context.Context, event misas.Event)
+}
+
+type defaultSystemEventBus struct {
+	eb misas.EventBus
+}
 
 func newSystemEventBus() systemEventBus {
 	eventBus := misas.NewInMemoryEventBus()
 	eventBus.RegisterHandler(loggingSystemEventHandler{})
-	return systemEventBus{
+	return &defaultSystemEventBus{
 		eb: eventBus,
 	}
 }
 
-func (s systemEventBus) Publish(ctx context.Context, event misas.Event) {
+func (s *defaultSystemEventBus) Publish(ctx context.Context, event misas.Event) {
 	err := s.eb.Publish(ctx, event)
 	if err != nil {
 		Log(ctx).Error("an internal system event handler failed", slog.Any(logKeyError, err))
 	}
+}
+
+type hotSwappableSystemEventBus struct {
+	eb atomic.Value
+}
+
+func newHotSwappableSystemEventBus(eb systemEventBus) *hotSwappableSystemEventBus {
+	b := &hotSwappableSystemEventBus{}
+	if eb != nil {
+		b.eb.Store(eb)
+	}
+	return b
+}
+
+func (b *hotSwappableSystemEventBus) Publish(ctx context.Context, event misas.Event) {
+	b.eb.Load().(systemEventBus).Publish(ctx, event)
+}
+
+func (b *hotSwappableSystemEventBus) Swap(eb systemEventBus) {
+	b.eb.Store(eb)
 }

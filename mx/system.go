@@ -68,8 +68,8 @@ func (s *system) run(app ApplicationSubsystem) (err error) {
 	}()
 
 	if supervisor, ok := app.(*Supervisor); ok {
-		supervisor.clock = s.clock
-		supervisor.eventBus = s.eventBus
+		supervisor.clock.Swap(s.clock)
+		supervisor.eventBus.Swap(s.eventBus)
 	}
 
 	app = newManagedApplicationSubsystem(app, s.eventBus, s.clock)

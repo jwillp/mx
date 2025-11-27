@@ -17,6 +17,8 @@ func main() {
 	supervisor := mx.NewSupervisor().
 		WithApplicationSubsystem(HelloWorldApplicationSubsystem{
 			clock: system.Clock(),
+		}, &mx.SupervisionOptions{
+			RestartPolicy: mx.DefaultRestartPolicy,
 		})
 
 	if err := system.Run(supervisor); err != nil {
