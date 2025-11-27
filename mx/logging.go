@@ -12,22 +12,27 @@ import (
 const logKeySubsystem = "subsystem"
 const logKeyError = "error"
 
-type systemLoggerKey struct{}
-type subsystemLoggerKey struct{}
-type applicationSubsystemNameKey struct{}
-
-func Log(ctx context.Context) ContextualLogger {
-	return ContextualLogger{ctx: ctx, logger: getLogger(ctx)}
+// SystemInfo holds system-level metadata
+type SystemInfo struct {
+	Name        string
+	Version     string
+	Environment Environment
+	Debug       bool
 }
 
-func getLogger(ctx context.Context) *slog.Logger {
-	if ctxLogger := ctx.Value(subsystemLoggerKey{}); ctxLogger != nil {
-		if logger, ok := ctxLogger.(*slog.Logger); ok {
-			return logger
-		}
+func Log(ctx context.Context) ContextualLogger {
+	logger := getLoggerFromContext(ctx)
+
+	subsystemInfo := GetSubsystemInfoFromContext(ctx)
+	if (subsystemInfo != SubsystemInfo{}) {
+		logger = logger.With(slog.String(logKeySubsystem, subsystemInfo.Name))
 	}
 
-	if ctxLogger := ctx.Value(systemLoggerKey{}); ctxLogger != nil {
+	return ContextualLogger{ctx: ctx, logger: logger}
+}
+
+func getLoggerFromContext(ctx context.Context) *slog.Logger {
+	if ctxLogger := ctx.Value(systemLoggerContextKey{}); ctxLogger != nil {
 		if logger, ok := ctxLogger.(*slog.Logger); ok {
 			return logger
 		}

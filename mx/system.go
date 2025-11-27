@@ -1,7 +1,6 @@
 package mx
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -89,42 +88,39 @@ func (sc *SystemConf) newDefaultLoggerHandler() slog.Handler {
 }
 
 type system struct {
-	name        string
-	version     string
-	environment Environment
-	debug       bool
-
-	logger *slog.Logger
-	clock  misas.Clock
-
+	info     SystemInfo
+	logger   *slog.Logger
+	clock    misas.Clock
 	eventBus systemEventBus
 }
 
 func newSystem(sc SystemConf) *system {
 	return &system{
-		name:        sc.name,
-		version:     sc.version,
-		environment: sc.environment,
-		debug:       sc.debug,
-		clock:       sc.clock,
-		logger:      slog.New(sc.loggerHandler),
-		eventBus:    newSystemEventBus(),
+		info: SystemInfo{
+			Name:        sc.name,
+			Version:     sc.version,
+			Environment: sc.environment,
+			Debug:       sc.debug,
+		},
+		clock:    sc.clock,
+		logger:   slog.New(sc.loggerHandler),
+		eventBus: newSystemEventBus(),
 	}
 }
 
 func (s *system) run(app ApplicationSubsystem) (err error) {
-	ctx := s.newSystemContext()
+	ctx := newSystemContext(*s)
 
 	app = newManagedApplicationSubsystem(app, s.eventBus, s.clock)
-	appCtx := newApplicationContext(ctx, app)
+	appCtx := newSubsystemContext(ctx, SubsystemInfo{Name: app.Name()})
 
 	// INIT
 	initializationStartedAt := s.clock.Now()
 	s.eventBus.Publish(ctx, SystemInitializationStartedEvent{
-		Name:        s.name,
-		Version:     s.version,
-		Environment: s.environment,
-		Debug:       s.debug,
+		Name:        s.info.Name,
+		Version:     s.info.Version,
+		Environment: s.info.Environment,
+		Debug:       s.info.Debug,
 		StartedAt:   s.clock.Now(),
 	})
 	err = app.Init(appCtx)
@@ -146,19 +142,6 @@ func (s *system) run(app ApplicationSubsystem) (err error) {
 	return err
 }
 
-func (s *system) newSystemContext() context.Context {
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, systemLoggerKey{}, s.logger)
-	return ctx
-}
-
-func newApplicationContext(ctx context.Context, as ApplicationSubsystem) context.Context {
-	ctxLogger := Log(ctx).With(slog.String(logKeySubsystem, as.Name()))
-	ctx = context.WithValue(ctx,
-		subsystemLoggerKey{},
-		ctxLogger.unwrap(),
-	)
-	ctx = context.WithValue(ctx, applicationSubsystemNameKey{}, as.Name())
-
-	return ctx
+type SubsystemInfo struct {
+	Name string
 }

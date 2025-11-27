@@ -36,5 +36,7 @@ func (h HelloWorldApplicationSubsystem) Run(ctx context.Context) error {
 	mx.Log(ctx).Info("This is my first application subsystem under the mx framework!")
 	mx.Log(ctx).Info("The current time is " + h.clock.Now().String())
 
+	mx.Log(ctx).Debug("Some debug information here.")
+
 	return fmt.Errorf("not implemented")
 }

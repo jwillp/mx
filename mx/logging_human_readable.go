@@ -138,7 +138,7 @@ func (r humanReadableLogRecord) formatTimestamp(colorOverride *aurora.Color) str
 func (r humanReadableLogRecord) formatAttributes(colorOverride *aurora.Color) string {
 	attrs := lo.Map(r.attrs, func(attr slog.Attr, _ int) string {
 		if attr.Key == logKeySubsystem {
-			return ""
+			return "" // skip subsystem attribute as it's already displayed in the scope
 		}
 
 		key := attr.Key
@@ -213,33 +213,6 @@ func (r humanReadableLogRecord) formatMessage(colorOverride *aurora.Color) strin
 	return message
 }
 
-//func (r humanReadableLogRecord) colorize() {
-//
-//	// Time
-//
-//	// Level
-//	switch r.level {
-//	case slog.LevelDebug:
-//		r.level = r.colorizer.Green(levelStr).String()
-//	case slog.LevelInfo:
-//		r.level = r.colorizer.Blue(levelStr).String()
-//	case slog.LevelWarn:
-//		r.level = r.colorizer.Yellow(levelStr).String()
-//	case slog.LevelError:
-//		r.level = r.colorizer.Red(levelStr).String()
-//	default:
-//		r.level = r.colorizer.Gray(12, levelStr).String()
-//	}
-//
-//	// Scope
-//	if r.scope != "system" {
-//		hash := fnv.New32a()
-//		_, _ = hash.Write([]byte(r.scope))
-//		colorIndex := uint8((hash.Sum32() % 216) + 16)
-//		r.scope = r.colorizer.Index(aurora.ColorIndex(colorIndex), r.scope).String()
-//	}
-//}
-
 func (h humanReadableLogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	if len(attrs) == 0 {
 		return h
@@ -257,8 +230,8 @@ func (h humanReadableLogHandler) WithGroup(name string) slog.Handler {
 
 func (h humanReadableLogHandler) findScope(ctx context.Context) string {
 	scope := "system"
-	if subsystem, ok := ctx.Value(applicationSubsystemNameKey{}).(string); ok && subsystem != "" {
-		scope = subsystem
+	if subsystem, ok := ctx.Value(subsystemInfoContextKey{}).(SubsystemInfo); ok && subsystem.Name != "" {
+		scope = subsystem.Name
 	}
 	return scope
 }
