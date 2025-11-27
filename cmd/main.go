@@ -29,7 +29,9 @@ func (h HelloWorldApplicationSubsystem) Name() string {
 	return "hello_world"
 }
 
-func (h HelloWorldApplicationSubsystem) Init(context.Context) error { return nil }
+func (h HelloWorldApplicationSubsystem) Initialize(context.Context) error { return nil }
+
+func (h HelloWorldApplicationSubsystem) Teardown(context.Context) error { return nil }
 
 func (h HelloWorldApplicationSubsystem) Run(ctx context.Context) error {
 	mx.Log(ctx).Info("Hello, World!")

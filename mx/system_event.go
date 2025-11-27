@@ -9,10 +9,19 @@ import (
 )
 
 const (
-	EventTypeSystemInitializationStarted misas.EventTypeName = "system.initialization.started"
-	EventTypeSystemInitializationEnded   misas.EventTypeName = "system.initialization.ended"
-	EventTypeSystemRunStarted            misas.EventTypeName = "system.run.started"
-	EventTypeSystemRunEnded              misas.EventTypeName = "system.run.ended"
+	SystemInitializationStartedEventTypeName misas.EventTypeName = "system.initialization.started"
+	SystemInitializationEndedEventTypeName   misas.EventTypeName = "system.initialization.ended"
+	SystemRunStartedEventTypeName            misas.EventTypeName = "system.run.started"
+	SystemRunEndedTypeName                   misas.EventTypeName = "system.run.ended"
+	SystemTeardownStartedEventTypeName       misas.EventTypeName = "system.teardown.started"
+	SystemTeardownEndedEventTypeName         misas.EventTypeName = "system.teardown.ended"
+
+	SubsystemInitializationStartedEventTypeName misas.EventTypeName = "subsystem.initialization.started"
+	SubsystemInitializationEndedEventTypeName   misas.EventTypeName = "subsystem.initialization.ended"
+	SubsystemRunStartedEventTypeName            misas.EventTypeName = "subsystem.run.started"
+	SubsystemRunEndedEventTypeName              misas.EventTypeName = "subsystem.run.ended"
+	SubsystemTeardownStartedEventTypeName       misas.EventTypeName = "subsystem.teardown.started"
+	SubsystemTeardownEndedEventTypeName         misas.EventTypeName = "subsystem.teardown.ended"
 )
 
 type SystemInitializationStartedEvent struct {
@@ -24,7 +33,7 @@ type SystemInitializationStartedEvent struct {
 }
 
 func (e SystemInitializationStartedEvent) TypeName() misas.EventTypeName {
-	return EventTypeSystemInitializationStarted
+	return SystemInitializationStartedEventTypeName
 }
 
 type SystemInitializationEndedEvent struct {
@@ -34,14 +43,14 @@ type SystemInitializationEndedEvent struct {
 }
 
 func (e SystemInitializationEndedEvent) TypeName() misas.EventTypeName {
-	return EventTypeSystemInitializationEnded
+	return SystemInitializationEndedEventTypeName
 }
 
 type SystemRunStartedEvent struct {
 	StartedAt time.Time
 }
 
-func (e SystemRunStartedEvent) TypeName() misas.EventTypeName { return EventTypeSystemRunStarted }
+func (e SystemRunStartedEvent) TypeName() misas.EventTypeName { return SystemRunStartedEventTypeName }
 
 type SystemRunEndedEvent struct {
 	StartedAt time.Time
@@ -49,7 +58,25 @@ type SystemRunEndedEvent struct {
 	Error     error
 }
 
-func (e SystemRunEndedEvent) TypeName() misas.EventTypeName { return EventTypeSystemRunEnded }
+func (e SystemRunEndedEvent) TypeName() misas.EventTypeName { return SystemRunEndedTypeName }
+
+type SystemTeardownStartedEvent struct {
+	StartedAt time.Time
+}
+
+func (e SystemTeardownStartedEvent) TypeName() misas.EventTypeName {
+	return SystemTeardownStartedEventTypeName
+}
+
+type SystemTeardownEndedEvent struct {
+	StartedAt time.Time
+	EndedAt   time.Time
+	Error     error
+}
+
+func (e SystemTeardownEndedEvent) TypeName() misas.EventTypeName {
+	return SystemTeardownEndedEventTypeName
+}
 
 type SubsystemInitializationStartedEvent struct {
 	SubsystemName string
@@ -57,7 +84,7 @@ type SubsystemInitializationStartedEvent struct {
 }
 
 func (e SubsystemInitializationStartedEvent) TypeName() misas.EventTypeName {
-	return misas.EventTypeInitializationStarted
+	return SubsystemInitializationStartedEventTypeName
 }
 
 type SubsystemInitializationEndedEvent struct {
@@ -68,7 +95,7 @@ type SubsystemInitializationEndedEvent struct {
 }
 
 func (e SubsystemInitializationEndedEvent) TypeName() misas.EventTypeName {
-	return misas.EventTypeInitializationEnded
+	return SubsystemInitializationEndedEventTypeName
 }
 
 type SubsystemRunStartedEvent struct {
@@ -76,7 +103,9 @@ type SubsystemRunStartedEvent struct {
 	StartedAt     time.Time
 }
 
-func (e SubsystemRunStartedEvent) TypeName() misas.EventTypeName { return misas.EventTypeRunStarted }
+func (e SubsystemRunStartedEvent) TypeName() misas.EventTypeName {
+	return SubsystemRunStartedEventTypeName
+}
 
 type SubsystemRunEndedEvent struct {
 	SubsystemName string
@@ -85,10 +114,31 @@ type SubsystemRunEndedEvent struct {
 	Error         error
 }
 
-func (e SubsystemRunEndedEvent) TypeName() misas.EventTypeName {
-	return misas.EventTypeRunEnded
+func (e SubsystemRunEndedEvent) TypeName() misas.EventTypeName { return SubsystemRunEndedEventTypeName }
+
+type SubsystemTeardownStartedEvent struct {
+	SubsystemName string
+	StartedAt     time.Time
 }
 
+func (e SubsystemTeardownStartedEvent) TypeName() misas.EventTypeName {
+	return SubsystemTeardownStartedEventTypeName
+}
+
+type SubsystemTeardownEndedEvent struct {
+	SubsystemName string
+	StartedAt     time.Time
+	EndedAt       time.Time
+	Error         error
+}
+
+func (e SubsystemTeardownEndedEvent) TypeName() misas.EventTypeName {
+	return SubsystemTeardownEndedEventTypeName
+}
+
+// systemEventBus is an internal event bus used to publish system events.
+// It differs from regular event buses in that it handles errors internally by logging them
+// instead of returning them to the caller.
 type systemEventBus struct{ eb misas.EventBus }
 
 func newSystemEventBus() systemEventBus {

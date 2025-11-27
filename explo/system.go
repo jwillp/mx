@@ -48,7 +48,7 @@ func (s *System) WithBusinessSubsystem(subsystem *BusinessSubsystem) *System {
 func (s *System) Run(app ApplicationSubsystem) error {
 	app = NewLoggingApplicationSubsystem(app, s.logger)
 
-	if err := app.Init(); err != nil {
+	if err := app.Initialize(); err != nil {
 		return err
 	}
 

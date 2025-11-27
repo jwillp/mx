@@ -38,6 +38,10 @@ func (s *supervisedApplicationSubsystem) Run(ctx context.Context) error {
 	return err
 }
 
+func (s *supervisedApplicationSubsystem) Teardown(ctx context.Context) error {
+	return s.ApplicationSubsystem.Teardown(ctx)
+}
+
 func (s *supervisedApplicationSubsystem) Stop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()

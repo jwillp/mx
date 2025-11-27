@@ -114,6 +114,17 @@ func (s *system) run(app ApplicationSubsystem) (err error) {
 	app = newManagedApplicationSubsystem(app, s.eventBus, s.clock)
 	appCtx := newSubsystemContext(ctx, SubsystemInfo{Name: app.Name()})
 
+	defer func() {
+		teardownStartedAt := s.clock.Now()
+		s.eventBus.Publish(ctx, SystemTeardownStartedEvent{StartedAt: teardownStartedAt})
+		teardownErr := app.Teardown(appCtx)
+		s.eventBus.Publish(ctx, SystemTeardownEndedEvent{
+			StartedAt: teardownStartedAt,
+			EndedAt:   s.clock.Now(),
+			Error:     teardownErr,
+		})
+	}()
+
 	// INIT
 	initializationStartedAt := s.clock.Now()
 	s.eventBus.Publish(ctx, SystemInitializationStartedEvent{
@@ -123,7 +134,7 @@ func (s *system) run(app ApplicationSubsystem) (err error) {
 		Debug:       s.info.Debug,
 		StartedAt:   s.clock.Now(),
 	})
-	err = app.Init(appCtx)
+	err = app.Initialize(appCtx)
 	s.eventBus.Publish(ctx, SystemInitializationEndedEvent{
 		StartedAt: initializationStartedAt,
 		EndedAt:   s.clock.Now(),
@@ -138,8 +149,11 @@ func (s *system) run(app ApplicationSubsystem) (err error) {
 	s.eventBus.Publish(ctx, SystemRunStartedEvent{StartedAt: s.clock.Now()})
 	err = app.Run(appCtx)
 	s.eventBus.Publish(ctx, SystemRunEndedEvent{StartedAt: runStartedAt, EndedAt: s.clock.Now(), Error: err})
+	if err != nil {
+		return fmt.Errorf("system failed: %w", err)
+	}
 
-	return err
+	return nil
 }
 
 type SubsystemInfo struct {

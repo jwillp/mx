@@ -128,6 +128,22 @@ func (h loggingSystemEventHandler) Handle(ctx context.Context, event misas.Event
 			return nil
 		}
 		logger.Info(fmt.Sprintf("application subsystem %q executed successfully", e.SubsystemName))
+	case SystemTeardownStartedEvent:
+		logger.Info("System tearing down...")
+	case SystemTeardownEndedEvent:
+		if e.Error != nil {
+			h.logSystemError(ctx, e.Error)
+			return nil
+		}
+		logger.Info("System teardown completed successfully")
+	case SubsystemTeardownStartedEvent:
+		logger.Info(fmt.Sprintf("application subsystem %q tearing down...", e.SubsystemName))
+	case SubsystemTeardownEndedEvent:
+		if e.Error != nil {
+			h.logSubsystemError(ctx, e.SubsystemName, e.Error)
+			return nil
+		}
+		logger.Info(fmt.Sprintf("application subsystem %q teardown completed successfully", e.SubsystemName))
 	}
 
 	return nil

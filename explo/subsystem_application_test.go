@@ -62,7 +62,7 @@ func TestLoggingApplicationSubsystem_Init(t *testing.T) {
 				logger,
 			)
 
-			err := s.Init()
+			err := s.Initialize()
 			tt.then.err(t, err)
 			logWriter.assertLogEntries(t, tt.then.logMessages)
 		})
@@ -139,11 +139,15 @@ func (m mockApplicationSubsystem) Name() string {
 	return m.name
 }
 
-func (m mockApplicationSubsystem) Init() error {
+func (m mockApplicationSubsystem) Initialize() error {
 	if m.initFunc == nil {
 		return nil
 	}
 	return m.initFunc()
+}
+
+func (m mockApplicationSubsystem) Teardown(context.Context) error {
+	return nil
 }
 
 func (m mockApplicationSubsystem) Run(ctx context.Context) error {

@@ -15,13 +15,6 @@ type EventBus interface {
 	Publish(context.Context, Event) error
 }
 
-const (
-	EventTypeInitializationStarted EventTypeName = "initialization.started"
-	EventTypeInitializationEnded   EventTypeName = "initialization.ended"
-	EventTypeRunStarted            EventTypeName = "run.started"
-	EventTypeRunEnded              EventTypeName = "run.ended"
-)
-
 type InMemoryEventBus struct {
 	handlers []EventHandler
 	mu       sync.RWMutex

@@ -1,7 +1,8 @@
 package mx_test
 
 import (
-	"github.com/morebec/mx"
+	"github.com/morebec/misas/misas"
+	"github.com/morebec/misas/mx"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -11,7 +12,7 @@ import (
 func TestRealTimeClock(t *testing.T) {
 	t.Run("given non nil timezone, should return date time in this time zone", func(t *testing.T) {
 		now := time.Now()
-		c := mx.NewRealTimeClock(time.UTC)
+		c := misas.NewRealTimeClock(time.UTC)
 		actual := c.Now()
 		assertSameTimeWithLeeway(t, now, actual)
 		assert.Equal(t, actual.Location(), time.UTC)
@@ -19,7 +20,7 @@ func TestRealTimeClock(t *testing.T) {
 
 	t.Run("given non nil timezone, should return date time in this time zone", func(t *testing.T) {
 		now := time.Now()
-		c := mx.NewRealTimeClock(nil)
+		c := misas.NewRealTimeClock(nil)
 		actual := c.Now()
 		assertSameTimeWithLeeway(t, now, c.Now())
 		assert.Equal(t, actual.Location(), time.Local)
@@ -50,8 +51,12 @@ func TestManualClock_Set(t *testing.T) {
 func assertSameTimeWithLeeway(t *testing.T, expected, actual time.Time) {
 	leeway := time.Millisecond * 2
 	maxExpected := expected.Add(leeway)
-	between := mx.IsBetween(actual, expected, maxExpected)
+	between := isBetween(actual, expected, maxExpected)
 	assert.True(t, between)
+}
+
+func isBetween(value, min, max time.Time) bool {
+	return (value.Equal(min) || value.After(min)) && (value.Equal(max) || value.Before(max))
 }
 
 func TestHotSwappableClock_Swap(t *testing.T) {

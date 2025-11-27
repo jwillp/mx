@@ -30,7 +30,7 @@ func TestSupervisor_Init(t *testing.T) {
 				},
 			})
 
-		err := supervisor.Init()
+		err := supervisor.Initialize()
 		require.NoError(t, err)
 		assert.Equal(t, 2, initCounter)
 	})
@@ -45,7 +45,7 @@ func TestSupervisor_Init(t *testing.T) {
 				},
 			})
 
-		err := supervisor.Init()
+		err := supervisor.Initialize()
 		require.Error(t, err)
 	})
 }
@@ -70,7 +70,8 @@ func TestSupervisor_Run(t *testing.T) {
 				},
 			})
 
-		err := supervisor.Init()
+		var err error
+		err = supervisor.Initialize()
 		require.NoError(t, err)
 
 		err = supervisor.Run(t.Context())
@@ -95,7 +96,7 @@ func TestSupervisor_Run(t *testing.T) {
 				},
 			})
 
-		err := supervisor.Init()
+		err := supervisor.Initialize()
 		require.NoError(t, err)
 
 		err = supervisor.Run(t.Context())
@@ -115,7 +116,7 @@ func TestSupervisor_Run(t *testing.T) {
 			},
 		})
 
-		err := supervisor.Init()
+		err := supervisor.Initialize()
 		require.NoError(t, err)
 
 		ctx, cancel := context.WithCancel(t.Context())
@@ -153,7 +154,7 @@ func TestSupervisor_Status(t *testing.T) {
 				},
 			})
 
-		err := supervisor.Init()
+		err := supervisor.Initialize()
 		require.NoError(t, err)
 
 		err = supervisor.Run(t.Context())
@@ -189,7 +190,7 @@ func TestSupervisor_Stop(t *testing.T) {
 			},
 		})
 
-		err := supervisor.Init()
+		err := supervisor.Initialize()
 		require.NoError(t, err)
 
 		go supervisor.Run(ctx)
@@ -210,7 +211,7 @@ func TestSupervisor_Stop(t *testing.T) {
 		supervisor := &mx.SupervisorApplicationSubsystem{}
 		supervisor.WithApplicationSubsystem(&mockApplicationSubsystem{name: "test-app"})
 
-		err := supervisor.Init()
+		err := supervisor.Initialize()
 		require.NoError(t, err)
 
 		err = supervisor.Stop("test-app")
@@ -240,7 +241,7 @@ func TestSupervisor_Start(t *testing.T) {
 			},
 		})
 
-		err := supervisor.Init()
+		err := supervisor.Initialize()
 		require.NoError(t, err)
 
 		ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
@@ -265,7 +266,7 @@ func TestSupervisor_Start(t *testing.T) {
 			},
 		})
 
-		err := supervisor.Init()
+		err := supervisor.Initialize()
 		require.NoError(t, err)
 
 		ctx, cancel := context.WithCancel(t.Context())

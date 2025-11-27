@@ -3,14 +3,15 @@ package mx
 import (
 	"context"
 	"fmt"
-	"github.com/logrusorgru/aurora/v4"
-	"github.com/samber/lo"
 	"hash/fnv"
 	"io"
 	"log/slog"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/logrusorgru/aurora/v4"
+	"github.com/samber/lo"
 )
 
 // humanReadableLogHandler creates a development-focused log handler inspired by Spring Boot's logging format.
@@ -148,6 +149,7 @@ func (r humanReadableLogRecord) formatAttributes(colorOverride *aurora.Color) st
 			key = r.colorizer.Magenta(attr.Key).String()
 			value = r.colorizer.Gray(12, fmt.Sprint(attr.Value)).String()
 		}
+
 		return fmt.Sprintf("%s=%s", key, value)
 	})
 	attrs = lo.Filter(attrs, func(attr string, _ int) bool { return attr != "" })

@@ -1,5 +1,7 @@
 package explo
 
+type CommandTypeName string
+
 type BusinessSubsystem struct {
 	Name            string
 	commandHandlers map[CommandTypeName]any

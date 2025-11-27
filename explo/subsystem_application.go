@@ -8,8 +8,9 @@ import (
 
 type ApplicationSubsystem interface {
 	Name() string
-	Init() error
+	Initialize() error
 	Run(ctx context.Context) error
+	Teardown(ctx context.Context) error
 }
 
 // LoggingApplicationSubsystem is an application subsystem decorator that adds logging capabilities to an existing
@@ -29,9 +30,9 @@ func NewLoggingApplicationSubsystem(
 	}
 }
 
-func (s LoggingApplicationSubsystem) Init() error {
+func (s LoggingApplicationSubsystem) Initialize() error {
 	s.logger.Info(fmt.Sprintf("%s: initializing", s.Name()))
-	err := s.ApplicationSubsystem.Init()
+	err := s.ApplicationSubsystem.Initialize()
 	if err != nil {
 		s.logger.Error(fmt.Sprintf("%s: failed to initialize: %s", s.Name(), err.Error()))
 		return err
@@ -50,5 +51,17 @@ func (s LoggingApplicationSubsystem) Run(ctx context.Context) error {
 	}
 
 	s.logger.Info(fmt.Sprintf("%s: executed successfully", s.Name()))
+	return nil
+}
+
+func (s LoggingApplicationSubsystem) Teardown(ctx context.Context) error {
+	s.logger.Info(fmt.Sprintf("%s: tearing down", s.Name()))
+	err := s.ApplicationSubsystem.Teardown(ctx)
+	if err != nil {
+		s.logger.Error(fmt.Sprintf("%s: failed to teardown: %s", s.Name(), err.Error()))
+		return err
+	}
+
+	s.logger.Info(fmt.Sprintf("%s: teardown completed successfully", s.Name()))
 	return nil
 }

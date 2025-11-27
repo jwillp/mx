@@ -8,8 +8,9 @@ import (
 
 type ApplicationSubsystem interface {
 	Name() string
-	Init(context.Context) error
+	Initialize(context.Context) error
 	Run(context.Context) error
+	Teardown(context.Context) error
 }
 
 type managedApplicationSubsystem struct {
@@ -26,7 +27,7 @@ func newManagedApplicationSubsystem(as ApplicationSubsystem, eventBus systemEven
 	}
 }
 
-func (s *managedApplicationSubsystem) Init(ctx context.Context) (err error) {
+func (s *managedApplicationSubsystem) Initialize(ctx context.Context) (err error) {
 	startedAt := s.clock.Now()
 	s.eventBus.Publish(ctx, SubsystemInitializationStartedEvent{SubsystemName: s.Name(), StartedAt: startedAt})
 	defer func() {
@@ -38,7 +39,7 @@ func (s *managedApplicationSubsystem) Init(ctx context.Context) (err error) {
 		})
 	}()
 
-	return s.ApplicationSubsystem.Init(ctx)
+	return s.ApplicationSubsystem.Initialize(ctx)
 }
 
 func (s *managedApplicationSubsystem) Run(ctx context.Context) (err error) {
@@ -54,5 +55,19 @@ func (s *managedApplicationSubsystem) Run(ctx context.Context) (err error) {
 	}()
 
 	return s.ApplicationSubsystem.Run(ctx)
+}
 
+func (s *managedApplicationSubsystem) Teardown(ctx context.Context) (err error) {
+	startedAt := s.clock.Now()
+	s.eventBus.Publish(ctx, SubsystemTeardownStartedEvent{SubsystemName: s.Name(), StartedAt: startedAt})
+	defer func() {
+		s.eventBus.Publish(ctx, SubsystemTeardownEndedEvent{
+			SubsystemName: s.Name(),
+			StartedAt:     startedAt,
+			EndedAt:       s.clock.Now(),
+			Error:         err,
+		})
+	}()
+
+	return s.ApplicationSubsystem.Teardown(ctx)
 }

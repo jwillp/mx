@@ -49,9 +49,9 @@ func (s *SupervisorApplicationSubsystem) WithApplicationSubsystem(as Application
 	return s
 }
 
-func (s *SupervisorApplicationSubsystem) Init() error {
+func (s *SupervisorApplicationSubsystem) Initialize() error {
 	for _, app := range s.applications {
-		if err := app.Init(); err != nil {
+		if err := app.Initialize(); err != nil {
 			return err
 		}
 	}
@@ -79,6 +79,16 @@ func (s *SupervisorApplicationSubsystem) Run(ctx context.Context) error {
 
 	if len(errs) > 0 {
 		return errors.Join(errs...)
+	}
+
+	return nil
+}
+
+func (s *SupervisorApplicationSubsystem) Teardown(ctx context.Context) error {
+	for _, app := range s.applications {
+		if err := app.Teardown(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
