@@ -184,7 +184,7 @@ func (r humanReadableLogRecord) formatScope(colorOverride *aurora.Color) string 
 	if colorOverride == nil && scope != "system" {
 		hash := fnv.New32a()
 		_, _ = hash.Write([]byte(scope))
-		colorIndex := uint8((hash.Sum32() % 216) + 16)
+		colorIndex := calculateScopeColorIndex(hash.Sum32())
 		scope = r.colorizer.Index(aurora.ColorIndex(colorIndex), scope).String()
 	}
 
@@ -192,6 +192,25 @@ func (r humanReadableLogRecord) formatScope(colorOverride *aurora.Color) string 
 	padding := columnSize - len(r.scope) - 2
 
 	return fmt.Sprintf("[%s]%s", scope, strings.Repeat(" ", padding))
+}
+
+// Curated list of 10 colors with variance, avoiding confusion with level indicators
+func calculateScopeColorIndex(hash uint32) uint8 {
+	safeColors := []uint8{
+		96,  // purple
+		81,  // teal
+		5,   // magenta
+		22,  // dark green (sufficiently different from pure green)
+		76,  // light green
+		125, // salmon/light red
+		166, // dark red (sufficiently different from pure red)
+		56,  // purple
+		6,   // cyan
+		135, // plum
+	}
+
+	index := hash % uint32(len(safeColors))
+	return safeColors[index]
 }
 
 func (r humanReadableLogRecord) formatMessage(colorOverride *aurora.Color) string {

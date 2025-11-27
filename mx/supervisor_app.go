@@ -3,113 +3,11 @@ package mx
 import (
 	"context"
 	"fmt"
-	"github.com/samber/lo"
 	"log/slog"
-	"math"
 	"sync"
 	"sync/atomic"
 	"time"
 )
-
-var DefaultRestartPolicy = NewRestartPolicy().
-	OnAnyError().
-	WithExponentialBackoff(time.Second, 2.0, lo.ToPtr(time.Minute))
-
-type RestartPolicy struct {
-	MaxRestarts  int
-	RestartDelay func(RestartPolicyState, error) time.Duration
-	ErrorFilter  func(RestartPolicyState, error) bool
-
-	state *RestartPolicyState
-}
-
-func NewRestartPolicy() *RestartPolicy {
-	return &RestartPolicy{
-		MaxRestarts:  0,
-		RestartDelay: func(RestartPolicyState, error) time.Duration { return 0 },
-		ErrorFilter:  func(RestartPolicyState, error) bool { return false },
-		state:        &RestartPolicyState{},
-	}
-}
-
-func (p *RestartPolicy) Never() *RestartPolicy {
-	p.ErrorFilter = func(RestartPolicyState, error) bool { return false }
-
-	return p
-}
-
-func (p *RestartPolicy) Always() *RestartPolicy {
-	p.ErrorFilter = func(RestartPolicyState, error) bool { return true }
-
-	return p
-}
-
-func (p *RestartPolicy) OnAnyError() *RestartPolicy {
-	p.ErrorFilter = func(_ RestartPolicyState, err error) bool { return err != nil }
-
-	return p
-}
-
-func (p *RestartPolicy) OnError(filter func(error) bool) *RestartPolicy {
-	p.ErrorFilter = func(_ RestartPolicyState, err error) bool { return filter(err) }
-
-	return p
-}
-
-func (p *RestartPolicy) WithFixedDelay(delay time.Duration) *RestartPolicy {
-	p.RestartDelay = func(RestartPolicyState, error) time.Duration { return delay }
-
-	return p
-}
-
-func (p *RestartPolicy) WithExponentialBackoff(
-	initialDelay time.Duration,
-	factor float64,
-	maxDelay *time.Duration,
-) *RestartPolicy {
-	p.RestartDelay = func(s RestartPolicyState, err error) time.Duration {
-		d := time.Duration(float64(initialDelay) * math.Pow(factor, float64(s.AttemptCount-1)))
-		if maxDelay != nil && d > *maxDelay {
-			return *maxDelay
-		}
-
-		return d
-	}
-
-	return p
-}
-
-type RestartPolicyState struct {
-	AttemptCount int
-	Errors       []error
-}
-
-func (p *RestartPolicy) ShouldRestart(err error) bool {
-	shouldRestart := p.ErrorFilter(*p.state, err)
-	if shouldRestart && p.MaxRestarts > 0 && p.state.AttemptCount+1 > p.MaxRestarts {
-		return false
-	}
-
-	return shouldRestart
-}
-
-func (p *RestartPolicy) onRestart(err error) {
-	p.state.AttemptCount++
-	p.state.Errors = append(p.state.Errors, err)
-}
-
-func (p *RestartPolicy) delay() time.Duration {
-	var delay time.Duration
-	if p.RestartDelay != nil {
-		delay = p.RestartDelay(*p.state, nil)
-	}
-
-	if delay == 0 {
-		return time.Second
-	}
-
-	return delay
-}
 
 type SupervisionOptions struct {
 	RestartPolicy *RestartPolicy
@@ -135,13 +33,16 @@ type supervisedApplicationSubsystem struct {
 func (s *supervisedApplicationSubsystem) Run(ctx context.Context) error {
 	appCtx := newSubsystemContext(ctx, SubsystemInfo{Name: s.Name()})
 	s.ensureInit()
+
+	if s.Options.RestartPolicy == nil {
+		s.Options.RestartPolicy = DefaultRestartPolicy
+	}
+
 	for {
-		// if manually stopped, wait until resumed or terminated or parent ctx done
 		if atomic.LoadUint32(&s.stopped) == 1 {
 			select {
 			case <-s.resumeChan:
 				atomic.StoreUint32(&s.stopped, 0)
-				// continue to start running
 			case <-s.terminateChan:
 				Log(ctx).Info(fmt.Sprintf("terminating supervised application subsystem %q", s.Name()))
 				return nil
@@ -157,25 +58,54 @@ func (s *supervisedApplicationSubsystem) Run(ctx context.Context) error {
 			Log(ctx).Info(fmt.Sprintf("terminating supervised application subsystem %q", s.Name()))
 			return nil
 		default:
+			now := time.Now()
 			err := s.runOnce(appCtx)
+
 			if err == nil {
+				s.Options.RestartPolicy.ResetState()
 				continue
 			}
-			// Ask policy whether to restart. ShouldRestart increments AttemptCount when it decides to allow a restart.
-			if s.shouldRestart(err) {
-				restartPolicy := s.Options.RestartPolicy
-				restartDelay := restartPolicy.delay()
-				time.Sleep(restartDelay)
-				restartPolicy.onRestart(err)
-				Log(ctx).Info(
-					fmt.Sprintf("restarting supervised application subsystem %q", s.Name()),
-					slog.Int("restartCount", restartPolicy.state.AttemptCount),
-					slog.Int("maxRestarts", restartPolicy.MaxRestarts),
-					slog.Duration("restartDelay", restartDelay),
+
+			policy := s.Options.RestartPolicy
+			if !policy.ShouldRestart(err) {
+				return err
+			}
+
+			policy.recordFailure(err, now)
+
+			if !policy.CanRestart(now) {
+				reason := "max retries exceeded"
+				if policy.IsCircuitOpen() {
+					reason = "circuit breaker open (too many failures)"
+				} else if policy.MaxRetryDuration > 0 {
+					reason = "max retry duration exceeded"
+				}
+				Log(ctx).Error(
+					fmt.Sprintf("giving up restart of supervised application subsystem %q: %s", s.Name(), reason),
+					slog.Any(logKeyError, err),
 				)
-				continue
+				return err
 			}
-			return err
+
+			delay := policy.NextRetryDelay()
+			policy.RecordAttempt()
+			state := policy.GetState()
+
+			Log(ctx).Warn(
+				fmt.Sprintf("restarting supervised application subsystem %q", s.Name()),
+				slog.Int("attemptNumber", state.AttemptCount),
+				slog.Int("failuresInWindow", state.FailureCount),
+				slog.Duration("restartDelay", delay),
+				slog.Any(logKeyError, err),
+			)
+
+			select {
+			case <-time.After(delay):
+			case <-s.terminateChan:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}
 	}
 }
@@ -206,13 +136,6 @@ func (s *supervisedApplicationSubsystem) runOnce(ctx context.Context) error {
 	cancel()
 
 	return err
-}
-
-func (s *supervisedApplicationSubsystem) shouldRestart(err error) bool {
-	if s.Options.RestartPolicy == nil {
-		s.Options.RestartPolicy = DefaultRestartPolicy
-	}
-	return s.Options.RestartPolicy.ShouldRestart(err)
 }
 
 func (s *supervisedApplicationSubsystem) Stop() {
