@@ -10,13 +10,16 @@ import (
 
 func main() {
 	system := mx.NewSystem("MyApp").
-		//WithEnvironment(mx.EnvironmentProduction)
+		//WithEnvironment(mx.EnvironmentProduction).
 		WithEnvironment(mx.EnvironmentDevelopment).
 		WithClock(misas.NewRealTimeClock(time.UTC))
 
-	if err := system.Run(HelloWorldApplicationSubsystem{
-		clock: system.Clock(),
-	}); err != nil {
+	supervisor := mx.NewSupervisor().
+		WithApplicationSubsystem(HelloWorldApplicationSubsystem{
+			clock: system.Clock(),
+		})
+
+	if err := system.Run(supervisor); err != nil {
 		panic(err)
 	}
 }

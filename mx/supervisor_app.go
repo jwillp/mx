@@ -1,4 +1,4 @@
-package explo
+package mx
 
 import (
 	"context"
@@ -76,7 +76,7 @@ func (s *supervisedApplicationSubsystem) Start(ctx context.Context) error {
 	return nil
 }
 
-func (s *supervisedApplicationSubsystem) Status() ApplicationSubsystemStatus {
+func (s *supervisedApplicationSubsystem) Status() SupervisedApplicationSubsystemStatus {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -87,7 +87,7 @@ func (s *supervisedApplicationSubsystem) Status() ApplicationSubsystemStatus {
 		state = ApplicationSubsystemStateRunning
 	}
 
-	return ApplicationSubsystemStatus{
+	return SupervisedApplicationSubsystemStatus{
 		Name:  s.ApplicationSubsystem.Name(),
 		State: state,
 		Error: s.err,

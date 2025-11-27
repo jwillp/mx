@@ -7,10 +7,17 @@ import (
 )
 
 type ApplicationSubsystem interface {
-	Name() string
+	// Initialize is called to set up the subsystem before running.
 	Initialize(context.Context) error
+
+	// Run is called to start the subsystem's operations.
 	Run(context.Context) error
+
+	// Teardown is called to clean up resources used by the subsystem when shutting down.
 	Teardown(context.Context) error
+
+	// Name returns the unique name of the subsystem.
+	Name() string
 }
 
 type managedApplicationSubsystem struct {

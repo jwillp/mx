@@ -12,14 +12,6 @@ import (
 const logKeySubsystem = "subsystem"
 const logKeyError = "error"
 
-// SystemInfo holds system-level metadata
-type SystemInfo struct {
-	Name        string
-	Version     string
-	Environment Environment
-	Debug       bool
-}
-
 func Log(ctx context.Context) ContextualLogger {
 	logger := getLoggerFromContext(ctx)
 

@@ -1,9 +1,12 @@
 package mx
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/morebec/misas/misas"
@@ -87,6 +90,13 @@ func (sc *SystemConf) newDefaultLoggerHandler() slog.Handler {
 	}
 }
 
+type SystemInfo struct {
+	Name        string
+	Version     string
+	Environment Environment
+	Debug       bool
+}
+
 type system struct {
 	info     SystemInfo
 	logger   *slog.Logger
@@ -110,6 +120,36 @@ func newSystem(sc SystemConf) *system {
 
 func (s *system) run(app ApplicationSubsystem) (err error) {
 	ctx := newSystemContext(*s)
+
+	// Setup signal handling for graceful shutdown
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(
+		signalChan,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGKILL,
+		os.Interrupt,
+		syscall.SIGHUP,
+		syscall.SIGQUIT,
+		syscall.SIGABRT,
+	)
+	defer signal.Stop(signalChan)
+
+	// Create a cancellable context
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Monitor for termination signals in a separate goroutine
+	go func() {
+		sig := <-signalChan
+		Log(ctx).Info("received termination signal, initiating graceful shutdown", "signal", sig.String())
+		cancel()
+	}()
+
+	if supervisor, ok := app.(*Supervisor); ok {
+		supervisor.clock = s.clock
+		supervisor.eventBus = s.eventBus
+	}
 
 	app = newManagedApplicationSubsystem(app, s.eventBus, s.clock)
 	appCtx := newSubsystemContext(ctx, SubsystemInfo{Name: app.Name()})
