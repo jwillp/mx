@@ -3,7 +3,6 @@ package mx
 import (
 	"context"
 	"fmt"
-	"github.com/morebec/misas/misas"
 	"log/slog"
 	"os"
 	"os/user"
@@ -61,15 +60,16 @@ func (c ContextualLogger) With(args ...any) ContextualLogger {
 	}
 }
 
-func (c ContextualLogger) unwrap() *slog.Logger { return c.logger }
+type loggingPlugin struct{}
 
-type loggingSystemEventHandler struct{}
-
-func (h loggingSystemEventHandler) Handle(ctx context.Context, event misas.Event) error {
+func (hl loggingPlugin) OnHook(ctx context.Context, hook PluginHook) error {
 	logger := Log(ctx)
 
-	switch e := event.(type) {
-	case SystemInitializationStartedEvent:
+	// Log hook dispatch at debug level for tracing
+	logger.Debug(fmt.Sprintf("hook dispatched: %q", hook.HookName()))
+
+	switch h := hook.(type) {
+	case SystemInitializationStartedHook:
 		currentUser, _ := user.Current()
 		userID := "unknown"
 		if currentUser != nil {
@@ -78,7 +78,7 @@ func (h loggingSystemEventHandler) Handle(ctx context.Context, event misas.Event
 		hostname, _ := os.Hostname()
 		cwd, _ := os.Getwd()
 
-		logger.Info(e.Name+" v"+e.Version,
+		logger.Info(h.Name+" v"+h.Version,
 			slog.String("environment", "development"),
 			slog.String("host", hostname),
 			slog.String("user", userID),
@@ -86,66 +86,71 @@ func (h loggingSystemEventHandler) Handle(ctx context.Context, event misas.Event
 			slog.String("cwd", cwd),
 		)
 		logger.Info("Mx Framework v" + Version)
-		if e.Debug {
+		if h.Debug {
 			logger.Debug("Debug mode is enabled")
 			logger.Warn("SYSTEM IS IN DEBUG MODE, TURN OFF FOR PRODUCTION")
 		}
 		logger.Info("System initializing ...")
-	case SystemInitializationEndedEvent:
-		if e.Error != nil {
-			h.logSystemError(ctx, e.Error)
+	case SystemInitializationEndedHook:
+		if h.Error != nil {
+			hl.logSystemError(ctx, h.Error)
 			return nil
 		}
 		logger.Info("System initialized successfully")
-	case SystemRunStartedEvent:
+	case SystemRunStartedHook:
 		logger.Info("System running...")
-	case SystemRunEndedEvent:
-		if e.Error != nil {
-			h.logSystemError(ctx, e.Error)
+	case SystemRunEndedHook:
+		if h.Error != nil {
+			hl.logSystemError(ctx, h.Error)
 			return nil
 		}
 		logger.Info("System executed successfully")
-	case SubsystemInitializationStartedEvent:
-		logger.Info(fmt.Sprintf("application subsystem %q initializing...", e.SubsystemName))
-	case SubsystemInitializationEndedEvent:
-		if e.Error != nil {
-			h.logSubsystemError(ctx, e.SubsystemName, e.Error)
+	case SubsystemInitializationStartedHook:
+		logger.Info(fmt.Sprintf("application subsystem %q initializing...", h.SubsystemName))
+	case SubsystemInitializationEndedHook:
+		if h.Error != nil {
+			hl.logSubsystemError(ctx, h.SubsystemName, h.Error)
 			return nil
 		}
-		logger.Info(fmt.Sprintf("application subsystem %q initialized successfully", e.SubsystemName))
-	case SubsystemRunStartedEvent:
-		logger.Info(fmt.Sprintf("application subsystem %q running...", e.SubsystemName))
-	case SubsystemRunEndedEvent:
-		if e.Error != nil {
-			h.logSubsystemError(ctx, e.SubsystemName, e.Error)
+		logger.Info(fmt.Sprintf("application subsystem %q initialized successfully", h.SubsystemName))
+	case SubsystemRunStartedHook:
+		logger.Info(fmt.Sprintf("application subsystem %q running...", h.SubsystemName))
+	case SubsystemRunEndedHook:
+		if h.Error != nil {
+			hl.logSubsystemError(ctx, h.SubsystemName, h.Error)
 			return nil
 		}
-		logger.Info(fmt.Sprintf("application subsystem %q executed successfully", e.SubsystemName))
-	case SystemTeardownStartedEvent:
+		logger.Info(fmt.Sprintf("application subsystem %q executed successfully", h.SubsystemName))
+	case SystemTeardownStartedHook:
 		logger.Info("System tearing down...")
-	case SystemTeardownEndedEvent:
-		if e.Error != nil {
-			h.logSystemError(ctx, e.Error)
+	case SystemTeardownEndedHook:
+		if h.Error != nil {
+			hl.logSystemError(ctx, h.Error)
 			return nil
 		}
 		logger.Info("System teardown completed successfully")
-	case SubsystemTeardownStartedEvent:
-		logger.Info(fmt.Sprintf("application subsystem %q tearing down...", e.SubsystemName))
-	case SubsystemTeardownEndedEvent:
-		if e.Error != nil {
-			h.logSubsystemError(ctx, e.SubsystemName, e.Error)
+	case SubsystemTeardownStartedHook:
+		logger.Info(fmt.Sprintf("application subsystem %q tearing down...", h.SubsystemName))
+	case SubsystemTeardownEndedHook:
+		if h.Error != nil {
+			hl.logSubsystemError(ctx, h.SubsystemName, h.Error)
 			return nil
 		}
-		logger.Info(fmt.Sprintf("application subsystem %q teardown completed successfully", e.SubsystemName))
+		logger.Info(fmt.Sprintf("application subsystem %q teardown completed successfully", h.SubsystemName))
+
+	case PluginAddedHook:
+		logger.Debug(fmt.Sprintf("plugin %q added", h.PluginName))
 	}
 
 	return nil
 }
 
-func (h loggingSystemEventHandler) logSystemError(ctx context.Context, err error) {
+func (loggingPlugin) Name() string { return "system.logging" }
+
+func (hl loggingPlugin) logSystemError(ctx context.Context, err error) {
 	Log(ctx).Error("System failed", slog.Any("error", err))
 }
 
-func (h loggingSystemEventHandler) logSubsystemError(ctx context.Context, subsystemName string, err error) {
+func (hl loggingPlugin) logSubsystemError(ctx context.Context, subsystemName string, err error) {
 	Log(ctx).Error(fmt.Sprintf("application subsystem %q failed", subsystemName), slog.Any("error", err))
 }

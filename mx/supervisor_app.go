@@ -21,8 +21,8 @@ type SupervisedApp interface {
 
 type supervisedApplicationSubsystem struct {
 	ApplicationSubsystem
-	Options  SupervisionOptions
-	eventBus systemEventBus
+	Options SupervisionOptions
+	pm      PluginManager
 
 	// lazy init for channels
 	initOnce sync.Once
@@ -89,7 +89,7 @@ func (s *supervisedApplicationSubsystem) Run(ctx context.Context) error {
 				}
 
 				state := policy.GetState()
-				s.eventBus.Publish(ctx, SubsystemMaxRestartReachedEvent{
+				s.pm.DispatchHook(ctx, SubsystemMaxRestartReachedHook{
 					ApplicationName: s.Name(),
 					RestartCount:    state.AttemptCount,
 					MaxAttempts:     policy.MaxRetries,
@@ -104,7 +104,7 @@ func (s *supervisedApplicationSubsystem) Run(ctx context.Context) error {
 			policy.RecordAttempt()
 			state := policy.GetState()
 
-			s.eventBus.Publish(ctx, SubsystemWillRestartEvent{
+			s.pm.DispatchHook(ctx, SubsystemWillRestartHook{
 				ApplicationName: s.Name(),
 				RestartCount:    state.AttemptCount,
 				MaxAttempts:     policy.MaxRetries,
@@ -121,7 +121,7 @@ func (s *supervisedApplicationSubsystem) Run(ctx context.Context) error {
 				return ctx.Err()
 			}
 
-			s.eventBus.Publish(ctx, SubsystemRestartedEvent{
+			s.pm.DispatchHook(ctx, SubsystemRestartedHook{
 				ApplicationName: s.Name(),
 				RestartCount:    state.AttemptCount,
 				MaxAttempts:     policy.MaxRetries,

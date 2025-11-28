@@ -22,23 +22,23 @@ type ApplicationSubsystem interface {
 
 type managedApplicationSubsystem struct {
 	ApplicationSubsystem
-	eventBus systemEventBus
-	clock    misas.Clock
+	pm    PluginManager
+	clock misas.Clock
 }
 
-func newManagedApplicationSubsystem(as ApplicationSubsystem, eventBus systemEventBus, clock misas.Clock) *managedApplicationSubsystem {
+func newManagedApplicationSubsystem(app ApplicationSubsystem, pm PluginManager, clock misas.Clock) *managedApplicationSubsystem {
 	return &managedApplicationSubsystem{
-		ApplicationSubsystem: as,
-		eventBus:             eventBus,
+		ApplicationSubsystem: app,
+		pm:                   pm,
 		clock:                clock,
 	}
 }
 
 func (s *managedApplicationSubsystem) Initialize(ctx context.Context) (err error) {
 	startedAt := s.clock.Now()
-	s.eventBus.Publish(ctx, SubsystemInitializationStartedEvent{SubsystemName: s.Name(), StartedAt: startedAt})
+	s.pm.DispatchHook(ctx, SubsystemInitializationStartedHook{SubsystemName: s.Name(), StartedAt: startedAt})
 	defer func() {
-		s.eventBus.Publish(ctx, SubsystemInitializationEndedEvent{
+		s.pm.DispatchHook(ctx, SubsystemInitializationEndedHook{
 			SubsystemName: s.Name(),
 			StartedAt:     startedAt,
 			EndedAt:       s.clock.Now(),
@@ -51,9 +51,9 @@ func (s *managedApplicationSubsystem) Initialize(ctx context.Context) (err error
 
 func (s *managedApplicationSubsystem) Run(ctx context.Context) (err error) {
 	startedAt := s.clock.Now()
-	s.eventBus.Publish(ctx, SubsystemRunStartedEvent{SubsystemName: s.Name(), StartedAt: startedAt})
+	s.pm.DispatchHook(ctx, SubsystemRunStartedHook{SubsystemName: s.Name(), StartedAt: startedAt})
 	defer func() {
-		s.eventBus.Publish(ctx, SubsystemRunEndedEvent{
+		s.pm.DispatchHook(ctx, SubsystemRunEndedHook{
 			SubsystemName: s.Name(),
 			StartedAt:     startedAt,
 			EndedAt:       s.clock.Now(),
@@ -66,9 +66,9 @@ func (s *managedApplicationSubsystem) Run(ctx context.Context) (err error) {
 
 func (s *managedApplicationSubsystem) Teardown(ctx context.Context) (err error) {
 	startedAt := s.clock.Now()
-	s.eventBus.Publish(ctx, SubsystemTeardownStartedEvent{SubsystemName: s.Name(), StartedAt: startedAt})
+	s.pm.DispatchHook(ctx, SubsystemTeardownStartedHook{SubsystemName: s.Name(), StartedAt: startedAt})
 	defer func() {
-		s.eventBus.Publish(ctx, SubsystemTeardownEndedEvent{
+		s.pm.DispatchHook(ctx, SubsystemTeardownEndedHook{
 			SubsystemName: s.Name(),
 			StartedAt:     startedAt,
 			EndedAt:       s.clock.Now(),

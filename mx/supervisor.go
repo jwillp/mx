@@ -8,36 +8,63 @@ import (
 	"time"
 )
 
-const defaultTeardownTimeout = 5 * time.Second
+const defaultTeardownTimeout = 30 * time.Second
+
+type applicationRegistration struct {
+	app     ApplicationSubsystem
+	options SupervisionOptions
+}
 
 type Supervisor struct {
+	// Raw application registrations (stored before wrapping)
+	rawApplications map[string]applicationRegistration
+	// Wrapped supervised applications (created during Initialize)
 	supervisedApplications map[string]*supervisedApplicationSubsystem
 	clock                  *HotSwappableClock
-	eventBus               *hotSwappableSystemEventBus
+	pm                     *hotSwappablePluginManager
 }
 
 func NewSupervisor() *Supervisor {
 	return &Supervisor{
+		rawApplications:        make(map[string]applicationRegistration),
 		supervisedApplications: make(map[string]*supervisedApplicationSubsystem),
 		clock:                  NewHotSwappableClock(nil),
-		eventBus:               newHotSwappableSystemEventBus(nil),
+		pm:                     newHotSwappablePluginManager(nil),
 	}
 }
 
 func (s *Supervisor) Name() string { return "supervisor" }
 
 func (s *Supervisor) WithApplicationSubsystem(app ApplicationSubsystem, options *SupervisionOptions) *Supervisor {
-	supervisedApp := &supervisedApplicationSubsystem{
-		ApplicationSubsystem: newManagedApplicationSubsystem(app, systemEventBus(s.eventBus), s.clock),
-		Options:              *options,
-		eventBus:             systemEventBus(s.eventBus),
+	// Store raw application registration without wrapping
+	// Wrapping will happen during Initialize() when pm and clock are initialized
+	s.rawApplications[app.Name()] = applicationRegistration{
+		app:     app,
+		options: *options,
 	}
-	s.supervisedApplications[app.Name()] = supervisedApp
 	return s
 }
 
+func (s *Supervisor) OnHook(ctx context.Context, hook PluginHook) error {
+	if h, ok := hook.(SystemInitializationStartedHook); ok {
+		s.pm.Swap(h.System.PluginManager())
+		s.clock.Swap(h.System.Clock())
+		s.pm.AddPlugin(ctx, supervisorLoggingPlugin{})
+	}
+
+	return nil
+}
+
 func (s *Supervisor) Initialize(ctx context.Context) error {
-	s.eventBus.RegisterHandler(supervisorLoggingEventHandler{})
+	// Wrap raw applications with managed subsystems now that pm and clock are initialized
+	for name, reg := range s.rawApplications {
+		supervisedApp := &supervisedApplicationSubsystem{
+			ApplicationSubsystem: newManagedApplicationSubsystem(reg.app, s.pm, s.clock),
+			Options:              reg.options,
+			pm:                   s.pm,
+		}
+		s.supervisedApplications[name] = supervisedApp
+	}
 
 	Log(ctx).Debug("Initializing supervised applications...", slog.Int("nbApplications", len(s.supervisedApplications)))
 	for _, app := range s.supervisedApplications {

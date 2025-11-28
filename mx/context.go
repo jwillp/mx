@@ -9,7 +9,7 @@ type systemLoggerContextKey struct{}
 type systemInfoContextKey struct{}
 type subsystemInfoContextKey struct{}
 
-func newSystemContext(s system) context.Context {
+func newSystemContext(s System) context.Context {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, systemLoggerContextKey{}, s.logger)
 	ctx = context.WithValue(ctx, subsystemInfoContextKey{}, s.info)
