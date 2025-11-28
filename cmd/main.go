@@ -12,14 +12,15 @@ func main() {
 	system := mx.NewSystem("MyApp").
 		//WithEnvironment(mx.EnvironmentProduction).
 		WithEnvironment(mx.EnvironmentDevelopment).
+		WithDebug(false).
 		WithClock(misas.NewRealTimeClock(time.UTC))
+
+	mx.ApplicationSubsystemRestartPolicyNo
 
 	supervisor := mx.NewSupervisor().
 		WithApplicationSubsystem(HelloWorldApplicationSubsystem{
 			clock: system.Clock(),
-		}, &mx.SupervisionOptions{
-			RestartPolicy: mx.DefaultRestartPolicy,
-		})
+		}, nil)
 
 	if err := system.Run(supervisor); err != nil {
 		panic(err)

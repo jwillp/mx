@@ -50,7 +50,6 @@ type ApplicationSubsystemMaxRestartReachedHook struct {
 	CircuitBreakerOpen      bool          // Is circuit breaker the cause
 	CircuitBreakerThreshold int           // Rapid-fire failure threshold
 	CircuitBreakerWindow    time.Duration // Time window for circuit breaker
-	MaxRetryDuration        time.Duration // Total retry time window limit
 }
 
 func (e ApplicationSubsystemMaxRestartReachedHook) HookName() SystemPluginHookName {

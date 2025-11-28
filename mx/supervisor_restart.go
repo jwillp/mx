@@ -7,24 +7,36 @@ import (
 )
 
 const (
-	RestartPolicyNo            = "no"
-	RestartPolicyAlways        = "always"
-	RestartPolicyOnFailure     = "on-failure"
-	RestartPolicyUnlessStopped = "unless-stopped"
+	ApplicationSubsystemRestartPolicyNo            = "no"
+	ApplicationSubsystemRestartPolicyAlways        = "always"
+	ApplicationSubsystemRestartPolicyOnFailure     = "on-failure"
+	ApplicationSubsystemRestartPolicyUnlessStopped = "unless-stopped"
 )
 
-var DefaultRestartPolicy = NewRestartPolicy(RestartPolicyOnFailure)
+const (
+	defaultMaxRestarts               = 5
+	defaultCircuitBreakerThreshold   = 3
+	defaultCircuitBreakerResetTimout = 30 * time.Second
+	defaultCircuitBreakerWindow      = 10 * time.Second
+)
+
+var DefaultRestartPolicy = NewApplicationSubsystemRestartPolicy(ApplicationSubsystemRestartPolicyOnFailure)
 
 type RestartPolicy struct {
 	policy string
 
-	MaxRetries       int
-	MaxRetryDuration time.Duration
+	maxRestarts      int
+	maxRetryDuration time.Duration
 
-	circuitBreakerEnabled      bool
-	circuitBreakerThreshold    int // Failures in window to trigger circuit break (rapid-fire safety)
+	circuitBreakerEnabled bool
+	// number of failures within the window to trigger circuit breaker and prevent
+	// rapid-fire restart because of quick errors.
+	circuitBreakerThreshold int
+
+	// maximum time the circuit breaker remains open before allowing restarts again
 	circuitBreakerResetTimeout time.Duration
-	circuitBreakerWindow       time.Duration // Time window for circuit breaker counting
+	// time window for counting failures towards the circuit breaker threshold
+	circuitBreakerWindow time.Duration
 
 	state *restartPolicyState
 }
@@ -38,61 +50,35 @@ type restartPolicyState struct {
 	circuitOpenTime time.Time
 }
 
-func NewRestartPolicy(policy string) *RestartPolicy {
+func NewApplicationSubsystemRestartPolicy(policy string) *RestartPolicy {
 	return &RestartPolicy{
 		policy:                     policy,
-		MaxRetries:                 5,
-		MaxRetryDuration:           0,
+		maxRestarts:                defaultMaxRestarts,
 		circuitBreakerEnabled:      true,
-		circuitBreakerThreshold:    3, // Separate threshold for rapid-fire detection
-		circuitBreakerResetTimeout: 30 * time.Second,
-		circuitBreakerWindow:       10 * time.Second,
+		circuitBreakerThreshold:    defaultCircuitBreakerThreshold,
+		circuitBreakerResetTimeout: defaultCircuitBreakerResetTimout,
+		circuitBreakerWindow:       defaultCircuitBreakerWindow,
 		state:                      &restartPolicyState{},
 	}
 }
 
-func (p *RestartPolicy) WithMaxRetries(max int) *RestartPolicy {
-	p.MaxRetries = max
+func (p *RestartPolicy) WithMaxRestarts(max int) *RestartPolicy {
+	p.maxRestarts = max
 	return p
 }
 
-func (p *RestartPolicy) WithMaxRetryDuration(d time.Duration) *RestartPolicy {
-	p.MaxRetryDuration = d
-	return p
-}
-
-func (p *RestartPolicy) WithCircuitBreaker(enabled bool) *RestartPolicy {
-	p.circuitBreakerEnabled = enabled
-	return p
-}
-
-func (p *RestartPolicy) WithCircuitBreakerThreshold(threshold int) *RestartPolicy {
-	p.circuitBreakerThreshold = threshold
-	return p
-}
-
-func (p *RestartPolicy) WithCircuitBreakerWindow(window time.Duration) *RestartPolicy {
-	p.circuitBreakerWindow = window
-	return p
-}
-
-func (p *RestartPolicy) WithCircuitBreakerResetTimeout(timeout time.Duration) *RestartPolicy {
-	p.circuitBreakerResetTimeout = timeout
-	return p
-}
-
-func (p *RestartPolicy) ShouldRestart(err error) bool {
+func (p *RestartPolicy) shouldRestart(err error) bool {
 	p.state.mu.Lock()
 	defer p.state.mu.Unlock()
 
 	switch p.policy {
-	case RestartPolicyNo:
+	case ApplicationSubsystemRestartPolicyNo:
 		return false
-	case RestartPolicyAlways:
+	case ApplicationSubsystemRestartPolicyAlways:
 		return true
-	case RestartPolicyUnlessStopped:
+	case ApplicationSubsystemRestartPolicyUnlessStopped:
 		return true
-	case RestartPolicyOnFailure:
+	case ApplicationSubsystemRestartPolicyOnFailure:
 		return err != nil
 	default:
 		return false
@@ -139,13 +125,13 @@ func (p *RestartPolicy) updateCircuitBreaker(now time.Time) {
 	}
 }
 
-func (p *RestartPolicy) IsCircuitOpen() bool {
+func (p *RestartPolicy) isCircuitOpen() bool {
 	p.state.mu.Lock()
 	defer p.state.mu.Unlock()
 	return p.state.circuitOpen
 }
 
-func (p *RestartPolicy) CanRestart(now time.Time) bool {
+func (p *RestartPolicy) canRestart(now time.Time) bool {
 	p.state.mu.Lock()
 	defer p.state.mu.Unlock()
 
@@ -158,21 +144,14 @@ func (p *RestartPolicy) CanRestart(now time.Time) bool {
 		return false
 	}
 
-	if p.MaxRetries > 0 && p.state.attemptCount >= p.MaxRetries {
+	if p.maxRestarts > 0 && p.state.attemptCount >= p.maxRestarts {
 		return false
-	}
-
-	if p.MaxRetryDuration > 0 && len(p.state.failureWindow) > 0 {
-		elapsed := now.Sub(p.state.failureWindow[0])
-		if elapsed > p.MaxRetryDuration {
-			return false
-		}
 	}
 
 	return true
 }
 
-func (p *RestartPolicy) NextRetryDelay() time.Duration {
+func (p *RestartPolicy) nextRetryDelay() time.Duration {
 	p.state.mu.Lock()
 	defer p.state.mu.Unlock()
 
@@ -185,13 +164,13 @@ func (p *RestartPolicy) NextRetryDelay() time.Duration {
 	return exponentialDelay
 }
 
-func (p *RestartPolicy) RecordAttempt() {
+func (p *RestartPolicy) recordAttempt() {
 	p.state.mu.Lock()
 	defer p.state.mu.Unlock()
 	p.state.attemptCount++
 }
 
-func (p *RestartPolicy) ResetState() {
+func (p *RestartPolicy) resetState() {
 	p.state.mu.Lock()
 	defer p.state.mu.Unlock()
 
@@ -201,7 +180,7 @@ func (p *RestartPolicy) ResetState() {
 	p.state.lastError = nil
 }
 
-func (p *RestartPolicy) GetState() RestartPolicyState {
+func (p *RestartPolicy) getState() RestartPolicyState {
 	p.state.mu.Lock()
 	defer p.state.mu.Unlock()
 

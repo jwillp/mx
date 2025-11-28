@@ -1,6 +1,7 @@
 package mx
 
 import (
+	"github.com/samber/lo"
 	"log/slog"
 	"os"
 	"time"
@@ -84,11 +85,11 @@ func (sc *SystemConf) newDefaultLoggerHandler() slog.Handler {
 	switch sc.environment {
 	case EnvironmentDevelopment:
 		return NewHumanReadableLogHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelDebug,
+			Level: lo.Ternary(!sc.debug, slog.LevelInfo, slog.LevelDebug),
 		})
 	default:
 		return slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelInfo,
+			Level: lo.Ternary(sc.debug, slog.LevelDebug, slog.LevelInfo),
 		})
 	}
 }

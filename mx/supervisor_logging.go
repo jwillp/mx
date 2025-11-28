@@ -49,7 +49,6 @@ func (p supervisorLoggingPlugin) OnHook(ctx context.Context, hook SystemPluginHo
 			slog.Bool("circuitBreakerOpen", e.CircuitBreakerOpen),
 			slog.Int("circuitBreakerThreshold", e.CircuitBreakerThreshold),
 			slog.Duration("circuitBreakerWindow", e.CircuitBreakerWindow),
-			slog.Duration("maxRetryDuration", e.MaxRetryDuration),
 			slog.Time("reachedAt", e.ReachedAt),
 			slog.Any(logKeyError, e.Error),
 		)

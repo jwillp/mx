@@ -3,6 +3,7 @@ package mx
 import (
 	"context"
 	"fmt"
+	"github.com/samber/lo"
 	"log/slog"
 	"sync"
 	"time"
@@ -12,7 +13,7 @@ const defaultTeardownTimeout = 30 * time.Second
 
 type applicationSubsystemRegistration struct {
 	app     ApplicationSubsystem
-	options SupervisionOptions
+	options *SupervisionOptions
 }
 
 type Supervisor struct {
@@ -36,11 +37,11 @@ func NewSupervisor() *Supervisor {
 func (s *Supervisor) Name() string { return "supervisor" }
 
 func (s *Supervisor) WithApplicationSubsystem(app ApplicationSubsystem, options *SupervisionOptions) *Supervisor {
-	// Store raw application registration without wrapping
-	// Wrapping will happen during Initialize() when pm and clock are initialized
+	// Store raw application registration without wrapping will happen during
+	// Initialize() when pm and clock are initialized
 	s.rawApplications[app.Name()] = applicationSubsystemRegistration{
 		app:     app,
-		options: *options,
+		options: options,
 	}
 	return s
 }
@@ -60,7 +61,7 @@ func (s *Supervisor) Initialize(ctx context.Context) error {
 	for name, reg := range s.rawApplications {
 		supervisedApp := &supervisedApplicationSubsystem{
 			ApplicationSubsystem: newManagedApplicationSubsystem(reg.app, s.pm, s.clock),
-			Options:              reg.options,
+			Options:              lo.Ternary(reg.options != nil, reg.options, &SupervisionOptions{}),
 			pm:                   s.pm,
 		}
 		s.supervisedApplications[name] = supervisedApp
