@@ -16,12 +16,12 @@ const (
 	SystemTeardownStartedPluginHookName       PluginHookName = "system.teardown.started"
 	SystemTeardownEndedPluginHookName         PluginHookName = "system.teardown.ended"
 
-	SubsystemInitializationStartedPluginHookName PluginHookName = "subsystem.initialization.started"
-	SubsystemInitializationEndedPluginHookName   PluginHookName = "subsystem.initialization.ended"
-	SubsystemRunStartedPluginHookName            PluginHookName = "subsystem.run.started"
-	SubsystemRunEndedPluginHookName              PluginHookName = "subsystem.run.ended"
-	SubsystemTeardownStartedPluginHookName       PluginHookName = "subsystem.teardown.started"
-	SubsystemTeardownEndedPluginHookName         PluginHookName = "subsystem.teardown.ended"
+	ApplicationSubsystemInitializationStartedPluginHookName PluginHookName = "application_subsystem.initialization.started"
+	ApplicationSubsystemInitializationEndedPluginHookName   PluginHookName = "application_subsystem.initialization.ended"
+	ApplicationSubsystemRunStartedPluginHookName            PluginHookName = "application_subsystem.run.started"
+	ApplicationSubsystemRunEndedPluginHookName              PluginHookName = "application_subsystem.run.ended"
+	ApplicationSubsystemTeardownStartedPluginHookName       PluginHookName = "application_subsystem.teardown.started"
+	ApplicationSubsystemTeardownEndedPluginHookName         PluginHookName = "application_subsystem.teardown.ended"
 
 	PluginAddedHookName PluginHookName = "plugin.added"
 )
@@ -81,58 +81,60 @@ func (e SystemTeardownEndedHook) HookName() PluginHookName {
 	return SystemTeardownEndedPluginHookName
 }
 
-type SubsystemInitializationStartedHook struct {
-	SubsystemName string
-	StartedAt     time.Time
+type ApplicationSubsystemInitializationStartedHook struct {
+	ApplicationSubsystemName string
+	StartedAt                time.Time
 }
 
-func (e SubsystemInitializationStartedHook) HookName() PluginHookName {
-	return SubsystemInitializationStartedPluginHookName
+func (e ApplicationSubsystemInitializationStartedHook) HookName() PluginHookName {
+	return ApplicationSubsystemInitializationStartedPluginHookName
 }
 
-type SubsystemInitializationEndedHook struct {
-	SubsystemName string
-	StartedAt     time.Time
-	EndedAt       time.Time
-	Error         error
+type ApplicationSubsystemInitializationEndedHook struct {
+	ApplicationSubsystemName string
+	StartedAt                time.Time
+	EndedAt                  time.Time
+	Error                    error
 }
 
-func (e SubsystemInitializationEndedHook) HookName() PluginHookName {
-	return SubsystemInitializationEndedPluginHookName
+func (e ApplicationSubsystemInitializationEndedHook) HookName() PluginHookName {
+	return ApplicationSubsystemInitializationEndedPluginHookName
 }
 
-type SubsystemRunStartedHook struct {
-	SubsystemName string
-	StartedAt     time.Time
+type ApplicationSubsystemRunStartedHook struct {
+	ApplicationSubsystemName string
+	StartedAt                time.Time
 }
 
-func (e SubsystemRunStartedHook) HookName() PluginHookName {
-	return SubsystemRunStartedPluginHookName
+func (e ApplicationSubsystemRunStartedHook) HookName() PluginHookName {
+	return ApplicationSubsystemRunStartedPluginHookName
 }
 
-type SubsystemRunEndedHook struct {
-	SubsystemName string
-	StartedAt     time.Time
-	EndedAt       time.Time
-	Error         error
+type ApplicationSubsystemRunEndedHook struct {
+	ApplicationSubsystemName string
+	StartedAt                time.Time
+	EndedAt                  time.Time
+	Error                    error
 }
 
-func (e SubsystemRunEndedHook) HookName() PluginHookName { return SubsystemRunEndedPluginHookName }
-
-type SubsystemTeardownStartedHook struct {
-	SubsystemName string
-	StartedAt     time.Time
+func (e ApplicationSubsystemRunEndedHook) HookName() PluginHookName {
+	return ApplicationSubsystemRunEndedPluginHookName
 }
 
-func (e SubsystemTeardownStartedHook) HookName() PluginHookName {
-	return SubsystemTeardownStartedPluginHookName
+type ApplicationSubsystemTeardownStartedHook struct {
+	ApplicationSubsystemName string
+	StartedAt                time.Time
 }
 
-type SubsystemTeardownEndedHook struct {
-	SubsystemName string
-	StartedAt     time.Time
-	EndedAt       time.Time
-	Error         error
+func (e ApplicationSubsystemTeardownStartedHook) HookName() PluginHookName {
+	return ApplicationSubsystemTeardownStartedPluginHookName
+}
+
+type ApplicationSubsystemTeardownEndedHook struct {
+	ApplicationSubsystemName string
+	StartedAt                time.Time
+	EndedAt                  time.Time
+	Error                    error
 }
 
 type PluginAddedHook struct {
@@ -141,8 +143,8 @@ type PluginAddedHook struct {
 
 func (e PluginAddedHook) HookName() PluginHookName { return PluginAddedHookName }
 
-func (e SubsystemTeardownEndedHook) HookName() PluginHookName {
-	return SubsystemTeardownEndedPluginHookName
+func (e ApplicationSubsystemTeardownEndedHook) HookName() PluginHookName {
+	return ApplicationSubsystemTeardownEndedPluginHookName
 }
 
 type PluginHook interface {

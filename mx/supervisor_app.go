@@ -34,7 +34,7 @@ type supervisedApplicationSubsystem struct {
 	// control channels
 	stopTrigger   chan struct{} // triggers cancellation of the current run (for Stop)
 	resumeChan    chan struct{} // used to resume after Stop
-	terminateChan chan struct{} // terminates the supervised subsystem
+	terminateChan chan struct{} // terminates the supervised application subsystem
 }
 
 func (s *supervisedApplicationSubsystem) Run(ctx context.Context) error {
@@ -89,13 +89,18 @@ func (s *supervisedApplicationSubsystem) Run(ctx context.Context) error {
 				}
 
 				state := policy.GetState()
-				s.pm.DispatchHook(ctx, SubsystemMaxRestartReachedHook{
-					ApplicationName: s.Name(),
-					RestartCount:    state.AttemptCount,
-					MaxAttempts:     policy.MaxRetries,
-					Reason:          reason,
-					Error:           err,
-					ReachedAt:       now,
+				s.pm.DispatchHook(ctx, ApplicationSubsystemMaxRestartReachedHook{
+					ApplicationName:         s.Name(),
+					RestartCount:            state.AttemptCount,
+					MaxAttempts:             policy.MaxRetries,
+					Reason:                  reason,
+					Error:                   err,
+					ReachedAt:               now,
+					FailureCount:            state.FailureCount,
+					CircuitBreakerOpen:      state.CircuitOpen,
+					CircuitBreakerThreshold: policy.circuitBreakerThreshold,
+					CircuitBreakerWindow:    policy.circuitBreakerWindow,
+					MaxRetryDuration:        policy.MaxRetryDuration,
 				})
 				return err
 			}
@@ -104,13 +109,16 @@ func (s *supervisedApplicationSubsystem) Run(ctx context.Context) error {
 			policy.RecordAttempt()
 			state := policy.GetState()
 
-			s.pm.DispatchHook(ctx, SubsystemWillRestartHook{
-				ApplicationName: s.Name(),
-				RestartCount:    state.AttemptCount,
-				MaxAttempts:     policy.MaxRetries,
-				RestartDelay:    delay,
-				Error:           err,
-				StartedAt:       now,
+			s.pm.DispatchHook(ctx, ApplicationSubsystemWillRestartHook{
+				ApplicationName:         s.Name(),
+				RestartCount:            state.AttemptCount,
+				MaxAttempts:             policy.MaxRetries,
+				RestartDelay:            delay,
+				Error:                   err,
+				StartedAt:               now,
+				FailureCount:            state.FailureCount,
+				CircuitBreakerOpen:      state.CircuitOpen,
+				CircuitBreakerThreshold: policy.circuitBreakerThreshold,
 			})
 
 			select {
@@ -121,7 +129,7 @@ func (s *supervisedApplicationSubsystem) Run(ctx context.Context) error {
 				return ctx.Err()
 			}
 
-			s.pm.DispatchHook(ctx, SubsystemRestartedHook{
+			s.pm.DispatchHook(ctx, ApplicationSubsystemRestartedHook{
 				ApplicationName: s.Name(),
 				RestartCount:    state.AttemptCount,
 				MaxAttempts:     policy.MaxRetries,

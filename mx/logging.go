@@ -105,22 +105,22 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook PluginHook) error {
 			return nil
 		}
 		logger.Info("System executed successfully")
-	case SubsystemInitializationStartedHook:
-		logger.Info(fmt.Sprintf("application subsystem %q initializing...", h.SubsystemName))
-	case SubsystemInitializationEndedHook:
+	case ApplicationSubsystemInitializationStartedHook:
+		logger.Info(fmt.Sprintf("application subsystem %q initializing...", h.ApplicationSubsystemName))
+	case ApplicationSubsystemInitializationEndedHook:
 		if h.Error != nil {
-			hl.logSubsystemError(ctx, h.SubsystemName, h.Error)
+			hl.logApplicationSubsystemError(ctx, h.ApplicationSubsystemName, h.Error)
 			return nil
 		}
-		logger.Info(fmt.Sprintf("application subsystem %q initialized successfully", h.SubsystemName))
-	case SubsystemRunStartedHook:
-		logger.Info(fmt.Sprintf("application subsystem %q running...", h.SubsystemName))
-	case SubsystemRunEndedHook:
+		logger.Info(fmt.Sprintf("application subsystem %q initialized successfully", h.ApplicationSubsystemName))
+	case ApplicationSubsystemRunStartedHook:
+		logger.Info(fmt.Sprintf("application subsystem %q running...", h.ApplicationSubsystemName))
+	case ApplicationSubsystemRunEndedHook:
 		if h.Error != nil {
-			hl.logSubsystemError(ctx, h.SubsystemName, h.Error)
+			hl.logApplicationSubsystemError(ctx, h.ApplicationSubsystemName, h.Error)
 			return nil
 		}
-		logger.Info(fmt.Sprintf("application subsystem %q executed successfully", h.SubsystemName))
+		logger.Info(fmt.Sprintf("application subsystem %q executed successfully", h.ApplicationSubsystemName))
 	case SystemTeardownStartedHook:
 		logger.Info("System tearing down...")
 	case SystemTeardownEndedHook:
@@ -129,14 +129,14 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook PluginHook) error {
 			return nil
 		}
 		logger.Info("System teardown completed successfully")
-	case SubsystemTeardownStartedHook:
-		logger.Info(fmt.Sprintf("application subsystem %q tearing down...", h.SubsystemName))
-	case SubsystemTeardownEndedHook:
+	case ApplicationSubsystemTeardownStartedHook:
+		logger.Info(fmt.Sprintf("application subsystem %q tearing down...", h.ApplicationSubsystemName))
+	case ApplicationSubsystemTeardownEndedHook:
 		if h.Error != nil {
-			hl.logSubsystemError(ctx, h.SubsystemName, h.Error)
+			hl.logApplicationSubsystemError(ctx, h.ApplicationSubsystemName, h.Error)
 			return nil
 		}
-		logger.Info(fmt.Sprintf("application subsystem %q teardown completed successfully", h.SubsystemName))
+		logger.Info(fmt.Sprintf("application subsystem %q teardown completed successfully", h.ApplicationSubsystemName))
 
 	case PluginAddedHook:
 		logger.Debug(fmt.Sprintf("plugin %q added", h.PluginName))
@@ -151,6 +151,6 @@ func (hl loggingPlugin) logSystemError(ctx context.Context, err error) {
 	Log(ctx).Error("System failed", slog.Any("error", err))
 }
 
-func (hl loggingPlugin) logSubsystemError(ctx context.Context, subsystemName string, err error) {
-	Log(ctx).Error(fmt.Sprintf("application subsystem %q failed", subsystemName), slog.Any("error", err))
+func (hl loggingPlugin) logApplicationSubsystemError(ctx context.Context, applicationSubsystemName string, err error) {
+	Log(ctx).Error(fmt.Sprintf("application subsystem %q failed", applicationSubsystemName), slog.Any("error", err))
 }

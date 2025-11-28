@@ -22,9 +22,9 @@ type RestartPolicy struct {
 	MaxRetryDuration time.Duration
 
 	circuitBreakerEnabled      bool
-	circuitBreakerThreshold    int
+	circuitBreakerThreshold    int // Failures in window to trigger circuit break (rapid-fire safety)
 	circuitBreakerResetTimeout time.Duration
-	circuitBreakerWindow       time.Duration
+	circuitBreakerWindow       time.Duration // Time window for circuit breaker counting
 
 	state *restartPolicyState
 }
@@ -44,7 +44,7 @@ func NewRestartPolicy(policy string) *RestartPolicy {
 		MaxRetries:                 5,
 		MaxRetryDuration:           0,
 		circuitBreakerEnabled:      true,
-		circuitBreakerThreshold:    3,
+		circuitBreakerThreshold:    3, // Separate threshold for rapid-fire detection
 		circuitBreakerResetTimeout: 30 * time.Second,
 		circuitBreakerWindow:       10 * time.Second,
 		state:                      &restartPolicyState{},
@@ -132,6 +132,7 @@ func (p *RestartPolicy) updateCircuitBreaker(now time.Time) {
 		return
 	}
 
+	// Circuit breaker opens when failures reach threshold within the window (rapid-fire safety)
 	if len(p.state.failureWindow) >= p.circuitBreakerThreshold {
 		p.state.circuitOpen = true
 		p.state.circuitOpenTime = now

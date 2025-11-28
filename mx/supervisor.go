@@ -10,14 +10,14 @@ import (
 
 const defaultTeardownTimeout = 30 * time.Second
 
-type applicationRegistration struct {
+type applicationSubsystemRegistration struct {
 	app     ApplicationSubsystem
 	options SupervisionOptions
 }
 
 type Supervisor struct {
 	// Raw application registrations (stored before wrapping)
-	rawApplications map[string]applicationRegistration
+	rawApplications map[string]applicationSubsystemRegistration
 	// Wrapped supervised applications (created during Initialize)
 	supervisedApplications map[string]*supervisedApplicationSubsystem
 	clock                  *HotSwappableClock
@@ -26,7 +26,7 @@ type Supervisor struct {
 
 func NewSupervisor() *Supervisor {
 	return &Supervisor{
-		rawApplications:        make(map[string]applicationRegistration),
+		rawApplications:        make(map[string]applicationSubsystemRegistration),
 		supervisedApplications: make(map[string]*supervisedApplicationSubsystem),
 		clock:                  NewHotSwappableClock(nil),
 		pm:                     newHotSwappablePluginManager(nil),
@@ -38,7 +38,7 @@ func (s *Supervisor) Name() string { return "supervisor" }
 func (s *Supervisor) WithApplicationSubsystem(app ApplicationSubsystem, options *SupervisionOptions) *Supervisor {
 	// Store raw application registration without wrapping
 	// Wrapping will happen during Initialize() when pm and clock are initialized
-	s.rawApplications[app.Name()] = applicationRegistration{
+	s.rawApplications[app.Name()] = applicationSubsystemRegistration{
 		app:     app,
 		options: *options,
 	}
@@ -56,7 +56,7 @@ func (s *Supervisor) OnHook(ctx context.Context, hook PluginHook) error {
 }
 
 func (s *Supervisor) Initialize(ctx context.Context) error {
-	// Wrap raw applications with managed subsystems now that pm and clock are initialized
+	// Wrap raw application subsystems with managed application subsystems now that pm and clock are initialized
 	for name, reg := range s.rawApplications {
 		supervisedApp := &supervisedApplicationSubsystem{
 			ApplicationSubsystem: newManagedApplicationSubsystem(reg.app, s.pm, s.clock),

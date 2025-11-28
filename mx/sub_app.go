@@ -7,16 +7,16 @@ import (
 )
 
 type ApplicationSubsystem interface {
-	// Initialize is called to set up the subsystem before running.
+	// Initialize is called to set up the application subsystem before running.
 	Initialize(context.Context) error
 
-	// Run is called to start the subsystem's operations.
+	// Run is called to start the application subsystem's operations.
 	Run(context.Context) error
 
-	// Teardown is called to clean up resources used by the subsystem when shutting down.
+	// Teardown is called to clean up resources used by the application subsystem when shutting down.
 	Teardown(context.Context) error
 
-	// Name returns the unique name of the subsystem.
+	// Name returns the unique name of the application subsystem.
 	Name() string
 }
 
@@ -36,13 +36,13 @@ func newManagedApplicationSubsystem(app ApplicationSubsystem, pm PluginManager, 
 
 func (s *managedApplicationSubsystem) Initialize(ctx context.Context) (err error) {
 	startedAt := s.clock.Now()
-	s.pm.DispatchHook(ctx, SubsystemInitializationStartedHook{SubsystemName: s.Name(), StartedAt: startedAt})
+	s.pm.DispatchHook(ctx, ApplicationSubsystemInitializationStartedHook{ApplicationSubsystemName: s.Name(), StartedAt: startedAt})
 	defer func() {
-		s.pm.DispatchHook(ctx, SubsystemInitializationEndedHook{
-			SubsystemName: s.Name(),
-			StartedAt:     startedAt,
-			EndedAt:       s.clock.Now(),
-			Error:         err,
+		s.pm.DispatchHook(ctx, ApplicationSubsystemInitializationEndedHook{
+			ApplicationSubsystemName: s.Name(),
+			StartedAt:                startedAt,
+			EndedAt:                  s.clock.Now(),
+			Error:                    err,
 		})
 	}()
 
@@ -51,13 +51,13 @@ func (s *managedApplicationSubsystem) Initialize(ctx context.Context) (err error
 
 func (s *managedApplicationSubsystem) Run(ctx context.Context) (err error) {
 	startedAt := s.clock.Now()
-	s.pm.DispatchHook(ctx, SubsystemRunStartedHook{SubsystemName: s.Name(), StartedAt: startedAt})
+	s.pm.DispatchHook(ctx, ApplicationSubsystemRunStartedHook{ApplicationSubsystemName: s.Name(), StartedAt: startedAt})
 	defer func() {
-		s.pm.DispatchHook(ctx, SubsystemRunEndedHook{
-			SubsystemName: s.Name(),
-			StartedAt:     startedAt,
-			EndedAt:       s.clock.Now(),
-			Error:         err,
+		s.pm.DispatchHook(ctx, ApplicationSubsystemRunEndedHook{
+			ApplicationSubsystemName: s.Name(),
+			StartedAt:                startedAt,
+			EndedAt:                  s.clock.Now(),
+			Error:                    err,
 		})
 	}()
 
@@ -66,13 +66,13 @@ func (s *managedApplicationSubsystem) Run(ctx context.Context) (err error) {
 
 func (s *managedApplicationSubsystem) Teardown(ctx context.Context) (err error) {
 	startedAt := s.clock.Now()
-	s.pm.DispatchHook(ctx, SubsystemTeardownStartedHook{SubsystemName: s.Name(), StartedAt: startedAt})
+	s.pm.DispatchHook(ctx, ApplicationSubsystemTeardownStartedHook{ApplicationSubsystemName: s.Name(), StartedAt: startedAt})
 	defer func() {
-		s.pm.DispatchHook(ctx, SubsystemTeardownEndedHook{
-			SubsystemName: s.Name(),
-			StartedAt:     startedAt,
-			EndedAt:       s.clock.Now(),
-			Error:         err,
+		s.pm.DispatchHook(ctx, ApplicationSubsystemTeardownEndedHook{
+			ApplicationSubsystemName: s.Name(),
+			StartedAt:                startedAt,
+			EndedAt:                  s.clock.Now(),
+			Error:                    err,
 		})
 	}()
 

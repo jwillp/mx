@@ -130,7 +130,7 @@ func (s *System) initializeApplication(ctx context.Context, appCtx context.Conte
 		System:      s,
 	})
 
-	// Initialize the application
+	// Initialize the application subsystem
 	err := app.Initialize(appCtx)
 	s.pm.DispatchHook(ctx, SystemInitializationEndedHook{
 		StartedAt: initializationStartedAt,
@@ -146,7 +146,7 @@ func (s *System) runApplication(ctx context.Context, appCtx context.Context, app
 	runStartedAt := s.clock.Now()
 	s.pm.DispatchHook(ctx, SystemRunStartedHook{StartedAt: runStartedAt})
 
-	// Run the application
+	// Run the application subsystem
 	err := app.Run(appCtx)
 	s.pm.DispatchHook(ctx, SystemRunEndedHook{
 		StartedAt: runStartedAt,
@@ -165,7 +165,7 @@ func (s *System) teardownApplication(ctx context.Context, appCtx context.Context
 	// Create a fresh context for teardown (not the canceled one)
 	teardownCtx := newSubsystemContext(ctx, SubsystemInfo{Name: app.Name()})
 
-	// Teardown the application
+	// Teardown the application subsystem
 	teardownErr := app.Teardown(teardownCtx)
 	s.pm.DispatchHook(ctx, SystemTeardownEndedHook{
 		StartedAt: teardownStartedAt,
