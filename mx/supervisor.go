@@ -21,16 +21,16 @@ type Supervisor struct {
 	rawApplications map[string]applicationSubsystemRegistration
 	// Wrapped supervised applications (created during Initialize)
 	supervisedApplications map[string]*supervisedApplicationSubsystem
-	clock                  *HotSwappableClock
-	pm                     *hotSwappableSystemPluginManager
+	clock                  *DynamicBindingClock
+	pm                     *lateBindingSystemPluginManager
 }
 
 func NewSupervisor() *Supervisor {
 	return &Supervisor{
 		rawApplications:        make(map[string]applicationSubsystemRegistration),
 		supervisedApplications: make(map[string]*supervisedApplicationSubsystem),
-		clock:                  NewHotSwappableClock(nil),
-		pm:                     newHotSwappableSystemPluginManager(nil),
+		clock:                  NewDynamicBindingClock(),
+		pm:                     newLateBindingSystemPluginManager(),
 	}
 }
 
@@ -48,8 +48,8 @@ func (s *Supervisor) WithApplicationSubsystem(app ApplicationSubsystem, options 
 
 func (s *Supervisor) OnHook(ctx context.Context, hook SystemPluginHook) error {
 	if h, ok := hook.(SystemInitializationStartedHook); ok {
-		s.pm.Swap(h.System.PluginManager())
-		s.clock.Swap(h.System.Clock())
+		s.pm.Bind(h.System.PluginManager())
+		s.clock.Bind(h.System.Clock())
 		s.pm.AddPlugin(ctx, supervisorLoggingPlugin{})
 	}
 

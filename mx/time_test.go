@@ -59,16 +59,18 @@ func isBetween(value, min, max time.Time) bool {
 	return (value.Equal(min) || value.After(min)) && (value.Equal(max) || value.Before(max))
 }
 
-func TestHotSwappableClock_Swap(t *testing.T) {
+func TestDynamicBindingClock_Swap(t *testing.T) {
 	t1 := lo.Must(time.Parse(time.RFC3339, "2024-01-01T10:00:00Z"))
 	c1 := mx.NewManualClock(t1)
+
 	t2 := lo.Must(time.Parse(time.RFC3339, "2000-01-01T10:00:00Z"))
 	c2 := mx.NewManualClock(t2)
 
-	hc := mx.NewHotSwappableClock(c1)
+	hc := mx.NewDynamicBindingClock()
+	hc.Bind(c1)
 	assert.Equal(t, t1, hc.Now())
 
-	hc.Swap(c2)
+	hc.Bind(c2)
 
 	assert.Equal(t, t2, hc.Now())
 }

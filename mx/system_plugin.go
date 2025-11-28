@@ -3,7 +3,6 @@ package mx
 import (
 	"context"
 	"log/slog"
-	"sync/atomic"
 	"time"
 )
 
@@ -190,33 +189,23 @@ func (pm *systemPluginManager) AddPlugin(ctx context.Context, plugin SystemPlugi
 	pm.DispatchHook(ctx, PluginAddedHook{PluginName: plugin.Name()})
 }
 
-// hotSwappableSystemPluginManager allows swapping the underlying SystemPluginManager at runtime.
-// It is safe for concurrent use.
-type hotSwappableSystemPluginManager struct {
-	pm atomic.Value // holds SystemPluginManager
+// lateBindingSystemPluginManager is an implementation of SystemPluginManager that allows
+// for late binding of the actual SystemPluginManager implementation. This is useful in scenarios
+// where the SystemPluginManager needs to be referenced before it is fully initialized.
+type lateBindingSystemPluginManager struct {
+	*LateBinding[SystemPluginManager]
 }
 
-func newHotSwappableSystemPluginManager(pm SystemPluginManager) *hotSwappableSystemPluginManager {
-	h := &hotSwappableSystemPluginManager{}
-	if pm != nil {
-		h.pm.Store(pm)
+func newLateBindingSystemPluginManager() *lateBindingSystemPluginManager {
+	return &lateBindingSystemPluginManager{
+		LateBinding: NewLateBinding[SystemPluginManager](),
 	}
-	return h
 }
 
-func (h *hotSwappableSystemPluginManager) get() SystemPluginManager {
-	v := h.pm.Load()
-	return v.(SystemPluginManager)
+func (h *lateBindingSystemPluginManager) AddPlugin(ctx context.Context, p SystemPlugin) {
+	h.Get().AddPlugin(ctx, p)
 }
 
-func (h *hotSwappableSystemPluginManager) AddPlugin(ctx context.Context, p SystemPlugin) {
-	h.get().AddPlugin(ctx, p)
-}
-
-func (h *hotSwappableSystemPluginManager) DispatchHook(ctx context.Context, hook SystemPluginHook) {
-	h.get().DispatchHook(ctx, hook)
-}
-
-func (h *hotSwappableSystemPluginManager) Swap(pm SystemPluginManager) {
-	h.pm.Store(pm)
+func (h *lateBindingSystemPluginManager) DispatchHook(ctx context.Context, hook SystemPluginHook) {
+	h.Get().DispatchHook(ctx, hook)
 }

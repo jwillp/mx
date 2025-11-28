@@ -23,11 +23,20 @@ type System struct {
 	logger         *slog.Logger
 	clock          misas.Clock
 	pm             SystemPluginManager
-	customPlugins  []SystemPlugin
 	builtInPlugins []SystemPlugin
+	customPlugins  []SystemPlugin
+	commandBus     misas.CommandBus
 }
 
-func newSystem(sc SystemConf) *System {
+func newSystem(sc *SystemConf) *System {
+	if !sc.commandBus.IsBound() {
+		sc.commandBus.Bind(NewInMemoryCommandBus())
+	}
+	for _, bsConf := range sc.businessSubsystems {
+		for cmdType, handler := range bsConf.commandHandlers {
+			sc.commandBus.RegisterHandler(cmdType, handler)
+		}
+	}
 
 	return &System{
 		info: SystemInfo{
@@ -41,6 +50,7 @@ func newSystem(sc SystemConf) *System {
 		pm:             newPluginManager(),
 		builtInPlugins: []SystemPlugin{loggingPlugin{}},
 		customPlugins:  sc.plugins,
+		commandBus:     sc.commandBus,
 	}
 }
 

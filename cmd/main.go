@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/morebec/misas/misas"
@@ -16,9 +16,19 @@ func main() {
 		WithDebug(false).
 		WithClock(misas.NewRealTimeClock(time.UTC))
 
+	system.WithBusinessSubsystem(
+		mx.NewBusinessSubsystem("inventory").
+			WithCommandHandler("some.command", misas.CommandHandlerFunc(func(ctx context.Context, cmd misas.Command) misas.CommandResult {
+				return misas.CommandResult{
+					Payload: errors.New("command handler not implemented"),
+				}
+			})),
+	)
+
 	supervisor := mx.NewSupervisor().
 		WithApplicationSubsystem(HelloWorldApplicationSubsystem{
 			clock: system.Clock(),
+			cb:    system.CommandBus(),
 		}, nil)
 
 	system.Run(supervisor)
@@ -26,6 +36,7 @@ func main() {
 
 type HelloWorldApplicationSubsystem struct {
 	clock misas.Clock
+	cb    misas.CommandBus
 }
 
 func (h HelloWorldApplicationSubsystem) Name() string {
@@ -43,5 +54,10 @@ func (h HelloWorldApplicationSubsystem) Run(ctx context.Context) error {
 	//
 	//mx.Log(ctx).Debug("Some debug information here.")
 
-	return fmt.Errorf("not implemented")
+	result := h.cb.HandleCommand(ctx, SomeCommand{})
+	return result.Payload.(error)
 }
+
+type SomeCommand struct{}
+
+func (c SomeCommand) TypeName() misas.CommandTypeName { return "some.command" }

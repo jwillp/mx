@@ -2,7 +2,6 @@ package mx
 
 import (
 	"github.com/morebec/misas/misas"
-	"sync/atomic"
 	"time"
 )
 
@@ -30,19 +29,16 @@ func (c *ManualClock) Now() time.Time {
 	return c.currentDateTime
 }
 
-// HotSwappableClock is an implementation of a clock that allows to change its
+// DynamicBindingClock is an implementation of a clock that allows to change its
 // underlying clock at runtime using atomic operations for concurrency safety.
-type HotSwappableClock struct {
-	clock atomic.Value
+type DynamicBindingClock struct {
+	*DynamicBinding[misas.Clock]
 }
 
-func NewHotSwappableClock(clock misas.Clock) *HotSwappableClock {
-	hc := &HotSwappableClock{}
-	if clock != nil {
-		hc.clock.Store(clock)
+func NewDynamicBindingClock() *DynamicBindingClock {
+	return &DynamicBindingClock{
+		DynamicBinding: NewDynamicBinding[misas.Clock](),
 	}
-	return hc
 }
 
-func (hc *HotSwappableClock) Now() time.Time         { return hc.clock.Load().(misas.Clock).Now() }
-func (hc *HotSwappableClock) Swap(clock misas.Clock) { hc.clock.Store(clock) }
+func (hc *DynamicBindingClock) Now() time.Time { return hc.Get().Now() }

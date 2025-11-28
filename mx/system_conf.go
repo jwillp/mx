@@ -19,13 +19,15 @@ const (
 )
 
 type SystemConf struct {
-	name          string
-	version       string
-	environment   Environment
-	debug         bool
-	loggerHandler slog.Handler
-	clock         *HotSwappableClock
-	plugins       []SystemPlugin
+	name               string
+	version            string
+	environment        Environment
+	debug              bool
+	loggerHandler      slog.Handler
+	clock              *DynamicBindingClock
+	plugins            []SystemPlugin
+	businessSubsystems map[string]BusinessSubsystemConf
+	commandBus         *DynamicBindingCommandBus
 }
 
 func NewSystem(name string) *SystemConf {
@@ -34,7 +36,13 @@ func NewSystem(name string) *SystemConf {
 		version:     "0.0.1",
 		environment: defaultEnvironment,
 		debug:       true,
-		clock:       NewHotSwappableClock(misas.NewRealTimeClock(time.UTC)),
+		clock: func() *DynamicBindingClock {
+			b := NewDynamicBindingClock()
+			b.Bind(misas.NewRealTimeClock(time.UTC))
+			return b
+		}(),
+		businessSubsystems: make(map[string]BusinessSubsystemConf),
+		commandBus:         NewDynamicBindingCommandBus(),
 	}
 }
 
@@ -43,7 +51,8 @@ func (sc *SystemConf) RunE(app ApplicationSubsystem) error {
 		sc.loggerHandler = sc.newDefaultLoggerHandler()
 	}
 
-	sys := newSystem(*sc)
+	sys := newSystem(sc)
+
 	return sys.run(app)
 }
 
@@ -72,7 +81,7 @@ func (sc *SystemConf) WithDebug(debug bool) *SystemConf {
 }
 
 func (sc *SystemConf) WithClock(c misas.Clock) *SystemConf {
-	sc.clock.Swap(c)
+	sc.clock.Bind(c)
 
 	return sc
 }
@@ -80,6 +89,20 @@ func (sc *SystemConf) WithClock(c misas.Clock) *SystemConf {
 func (sc *SystemConf) Clock() misas.Clock {
 	return sc.clock
 }
+
+func (sc *SystemConf) WithBusinessSubsystem(bc *BusinessSubsystemConf) *SystemConf {
+	sc.businessSubsystems[bc.name] = *bc
+
+	return sc
+}
+
+func (sc *SystemConf) WithCommandBus(b misas.CommandBus) *SystemConf {
+	sc.commandBus.Bind(b)
+
+	return sc
+}
+
+func (sc *SystemConf) CommandBus() misas.CommandBus { return sc.commandBus }
 
 func (sc *SystemConf) WithPlugin(p SystemPlugin) *SystemConf {
 	sc.plugins = append(sc.plugins, p)
