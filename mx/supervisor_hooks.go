@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	ApplicationSubsystemWillRestartPluginHookName       PluginHookName = "application_subsystem.will.restart"
-	ApplicationSubsystemRestartedPluginHookName         PluginHookName = "application_subsystem.restarted"
-	ApplicationSubsystemMaxRestartReachedPluginHookName PluginHookName = "application_subsystem.max.restart.reached"
+	ApplicationSubsystemWillRestartPluginHookName       SystemPluginHookName = "application_subsystem.will.restart"
+	ApplicationSubsystemRestartedPluginHookName         SystemPluginHookName = "application_subsystem.restarted"
+	ApplicationSubsystemMaxRestartReachedPluginHookName SystemPluginHookName = "application_subsystem.max.restart.reached"
 )
 
 type ApplicationSubsystemWillRestartHook struct {
@@ -22,7 +22,7 @@ type ApplicationSubsystemWillRestartHook struct {
 	CircuitBreakerThreshold int  // Threshold for rapid-fire detection
 }
 
-func (e ApplicationSubsystemWillRestartHook) HookName() PluginHookName {
+func (e ApplicationSubsystemWillRestartHook) HookName() SystemPluginHookName {
 	return ApplicationSubsystemWillRestartPluginHookName
 }
 
@@ -35,7 +35,7 @@ type ApplicationSubsystemRestartedHook struct {
 	EndedAt         time.Time
 }
 
-func (e ApplicationSubsystemRestartedHook) HookName() PluginHookName {
+func (e ApplicationSubsystemRestartedHook) HookName() SystemPluginHookName {
 	return ApplicationSubsystemRestartedPluginHookName
 }
 
@@ -53,6 +53,6 @@ type ApplicationSubsystemMaxRestartReachedHook struct {
 	MaxRetryDuration        time.Duration // Total retry time window limit
 }
 
-func (e ApplicationSubsystemMaxRestartReachedHook) HookName() PluginHookName {
+func (e ApplicationSubsystemMaxRestartReachedHook) HookName() SystemPluginHookName {
 	return ApplicationSubsystemMaxRestartReachedPluginHookName
 }

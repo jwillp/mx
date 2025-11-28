@@ -8,7 +8,7 @@ import (
 
 type supervisorLoggingPlugin struct{}
 
-func (p supervisorLoggingPlugin) OnHook(ctx context.Context, hook PluginHook) error {
+func (p supervisorLoggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error {
 	switch e := hook.(type) {
 	case ApplicationSubsystemWillRestartHook:
 		Log(ctx).Warn(

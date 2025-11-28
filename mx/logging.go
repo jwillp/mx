@@ -62,7 +62,7 @@ func (c ContextualLogger) With(args ...any) ContextualLogger {
 
 type loggingPlugin struct{}
 
-func (hl loggingPlugin) OnHook(ctx context.Context, hook PluginHook) error {
+func (hl loggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error {
 	logger := Log(ctx)
 
 	// Log hook dispatch at debug level for tracing

@@ -22,11 +22,11 @@ type ApplicationSubsystem interface {
 
 type managedApplicationSubsystem struct {
 	ApplicationSubsystem
-	pm    PluginManager
+	pm    SystemPluginManager
 	clock misas.Clock
 }
 
-func newManagedApplicationSubsystem(app ApplicationSubsystem, pm PluginManager, clock misas.Clock) *managedApplicationSubsystem {
+func newManagedApplicationSubsystem(app ApplicationSubsystem, pm SystemPluginManager, clock misas.Clock) *managedApplicationSubsystem {
 	return &managedApplicationSubsystem{
 		ApplicationSubsystem: app,
 		pm:                   pm,

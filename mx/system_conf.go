@@ -24,7 +24,7 @@ type SystemConf struct {
 	debug         bool
 	loggerHandler slog.Handler
 	clock         *HotSwappableClock
-	plugins       []Plugin
+	plugins       []SystemPlugin
 }
 
 func NewSystem(name string) *SystemConf {
@@ -74,7 +74,7 @@ func (sc *SystemConf) Clock() misas.Clock {
 	return sc.clock
 }
 
-func (sc *SystemConf) WithPlugin(p Plugin) *SystemConf {
+func (sc *SystemConf) WithPlugin(p SystemPlugin) *SystemConf {
 	sc.plugins = append(sc.plugins, p)
 
 	return sc

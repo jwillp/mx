@@ -22,9 +22,9 @@ type System struct {
 	info           SystemInfo
 	logger         *slog.Logger
 	clock          misas.Clock
-	pm             PluginManager
-	customPlugins  []Plugin
-	builtInPlugins []Plugin
+	pm             SystemPluginManager
+	customPlugins  []SystemPlugin
+	builtInPlugins []SystemPlugin
 }
 
 func newSystem(sc SystemConf) *System {
@@ -39,7 +39,7 @@ func newSystem(sc SystemConf) *System {
 		clock:          sc.clock,
 		logger:         slog.New(sc.loggerHandler),
 		pm:             newPluginManager(),
-		builtInPlugins: []Plugin{loggingPlugin{}},
+		builtInPlugins: []SystemPlugin{loggingPlugin{}},
 		customPlugins:  sc.plugins,
 	}
 }
@@ -105,10 +105,10 @@ func (s *System) setupSignalHandling(ctx context.Context) (context.Context, cont
 
 func (s *System) loadPlugins(ctx context.Context, app ApplicationSubsystem) {
 	// Collect all plugins: built-in, custom, and app-provided
-	allPlugins := make([]Plugin, 0, len(s.builtInPlugins)+len(s.customPlugins)+1)
+	allPlugins := make([]SystemPlugin, 0, len(s.builtInPlugins)+len(s.customPlugins)+1)
 	allPlugins = append(allPlugins, s.builtInPlugins...)
 	allPlugins = append(allPlugins, s.customPlugins...)
-	if plugin, ok := app.(Plugin); ok {
+	if plugin, ok := app.(SystemPlugin); ok {
 		allPlugins = append(allPlugins, plugin)
 	}
 
@@ -174,8 +174,8 @@ func (s *System) teardownApplication(ctx context.Context, appCtx context.Context
 	})
 }
 
-func (s *System) PluginManager() PluginManager { return s.pm }
-func (s *System) Clock() misas.Clock           { return s.clock }
+func (s *System) PluginManager() SystemPluginManager { return s.pm }
+func (s *System) Clock() misas.Clock                 { return s.clock }
 
 type SubsystemInfo struct {
 	Name string

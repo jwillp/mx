@@ -6,24 +6,24 @@ import (
 	"time"
 )
 
-type PluginHookName string
+type SystemPluginHookName string
 
 const (
-	SystemInitializationStartedPluginHookName PluginHookName = "system.initialization.started"
-	SystemInitializationEndedPluginHookName   PluginHookName = "system.initialization.ended"
-	SystemRunStartedPluginHookName            PluginHookName = "system.run.started"
-	SystemRunEndedTypeName                    PluginHookName = "system.run.ended"
-	SystemTeardownStartedPluginHookName       PluginHookName = "system.teardown.started"
-	SystemTeardownEndedPluginHookName         PluginHookName = "system.teardown.ended"
+	SystemInitializationStartedPluginHookName SystemPluginHookName = "system.initialization.started"
+	SystemInitializationEndedPluginHookName   SystemPluginHookName = "system.initialization.ended"
+	SystemRunStartedPluginHookName            SystemPluginHookName = "system.run.started"
+	SystemRunEndedTypeName                    SystemPluginHookName = "system.run.ended"
+	SystemTeardownStartedPluginHookName       SystemPluginHookName = "system.teardown.started"
+	SystemTeardownEndedPluginHookName         SystemPluginHookName = "system.teardown.ended"
 
-	ApplicationSubsystemInitializationStartedPluginHookName PluginHookName = "application_subsystem.initialization.started"
-	ApplicationSubsystemInitializationEndedPluginHookName   PluginHookName = "application_subsystem.initialization.ended"
-	ApplicationSubsystemRunStartedPluginHookName            PluginHookName = "application_subsystem.run.started"
-	ApplicationSubsystemRunEndedPluginHookName              PluginHookName = "application_subsystem.run.ended"
-	ApplicationSubsystemTeardownStartedPluginHookName       PluginHookName = "application_subsystem.teardown.started"
-	ApplicationSubsystemTeardownEndedPluginHookName         PluginHookName = "application_subsystem.teardown.ended"
+	ApplicationSubsystemInitializationStartedPluginHookName SystemPluginHookName = "application_subsystem.initialization.started"
+	ApplicationSubsystemInitializationEndedPluginHookName   SystemPluginHookName = "application_subsystem.initialization.ended"
+	ApplicationSubsystemRunStartedPluginHookName            SystemPluginHookName = "application_subsystem.run.started"
+	ApplicationSubsystemRunEndedPluginHookName              SystemPluginHookName = "application_subsystem.run.ended"
+	ApplicationSubsystemTeardownStartedPluginHookName       SystemPluginHookName = "application_subsystem.teardown.started"
+	ApplicationSubsystemTeardownEndedPluginHookName         SystemPluginHookName = "application_subsystem.teardown.ended"
 
-	PluginAddedHookName PluginHookName = "plugin.added"
+	PluginAddedHookName SystemPluginHookName = "plugin.added"
 )
 
 type SystemInitializationStartedHook struct {
@@ -35,7 +35,7 @@ type SystemInitializationStartedHook struct {
 	System      *System
 }
 
-func (e SystemInitializationStartedHook) HookName() PluginHookName {
+func (e SystemInitializationStartedHook) HookName() SystemPluginHookName {
 	return SystemInitializationStartedPluginHookName
 }
 
@@ -45,7 +45,7 @@ type SystemInitializationEndedHook struct {
 	Error     error
 }
 
-func (e SystemInitializationEndedHook) HookName() PluginHookName {
+func (e SystemInitializationEndedHook) HookName() SystemPluginHookName {
 	return SystemInitializationEndedPluginHookName
 }
 
@@ -53,7 +53,7 @@ type SystemRunStartedHook struct {
 	StartedAt time.Time
 }
 
-func (e SystemRunStartedHook) HookName() PluginHookName { return SystemRunStartedPluginHookName }
+func (e SystemRunStartedHook) HookName() SystemPluginHookName { return SystemRunStartedPluginHookName }
 
 type SystemRunEndedHook struct {
 	StartedAt time.Time
@@ -61,13 +61,13 @@ type SystemRunEndedHook struct {
 	Error     error
 }
 
-func (e SystemRunEndedHook) HookName() PluginHookName { return SystemRunEndedTypeName }
+func (e SystemRunEndedHook) HookName() SystemPluginHookName { return SystemRunEndedTypeName }
 
 type SystemTeardownStartedHook struct {
 	StartedAt time.Time
 }
 
-func (e SystemTeardownStartedHook) HookName() PluginHookName {
+func (e SystemTeardownStartedHook) HookName() SystemPluginHookName {
 	return SystemTeardownStartedPluginHookName
 }
 
@@ -77,7 +77,7 @@ type SystemTeardownEndedHook struct {
 	Error     error
 }
 
-func (e SystemTeardownEndedHook) HookName() PluginHookName {
+func (e SystemTeardownEndedHook) HookName() SystemPluginHookName {
 	return SystemTeardownEndedPluginHookName
 }
 
@@ -86,7 +86,7 @@ type ApplicationSubsystemInitializationStartedHook struct {
 	StartedAt                time.Time
 }
 
-func (e ApplicationSubsystemInitializationStartedHook) HookName() PluginHookName {
+func (e ApplicationSubsystemInitializationStartedHook) HookName() SystemPluginHookName {
 	return ApplicationSubsystemInitializationStartedPluginHookName
 }
 
@@ -97,7 +97,7 @@ type ApplicationSubsystemInitializationEndedHook struct {
 	Error                    error
 }
 
-func (e ApplicationSubsystemInitializationEndedHook) HookName() PluginHookName {
+func (e ApplicationSubsystemInitializationEndedHook) HookName() SystemPluginHookName {
 	return ApplicationSubsystemInitializationEndedPluginHookName
 }
 
@@ -106,7 +106,7 @@ type ApplicationSubsystemRunStartedHook struct {
 	StartedAt                time.Time
 }
 
-func (e ApplicationSubsystemRunStartedHook) HookName() PluginHookName {
+func (e ApplicationSubsystemRunStartedHook) HookName() SystemPluginHookName {
 	return ApplicationSubsystemRunStartedPluginHookName
 }
 
@@ -117,7 +117,7 @@ type ApplicationSubsystemRunEndedHook struct {
 	Error                    error
 }
 
-func (e ApplicationSubsystemRunEndedHook) HookName() PluginHookName {
+func (e ApplicationSubsystemRunEndedHook) HookName() SystemPluginHookName {
 	return ApplicationSubsystemRunEndedPluginHookName
 }
 
@@ -126,7 +126,7 @@ type ApplicationSubsystemTeardownStartedHook struct {
 	StartedAt                time.Time
 }
 
-func (e ApplicationSubsystemTeardownStartedHook) HookName() PluginHookName {
+func (e ApplicationSubsystemTeardownStartedHook) HookName() SystemPluginHookName {
 	return ApplicationSubsystemTeardownStartedPluginHookName
 }
 
@@ -141,41 +141,41 @@ type PluginAddedHook struct {
 	PluginName string
 }
 
-func (e PluginAddedHook) HookName() PluginHookName { return PluginAddedHookName }
+func (e PluginAddedHook) HookName() SystemPluginHookName { return PluginAddedHookName }
 
-func (e ApplicationSubsystemTeardownEndedHook) HookName() PluginHookName {
+func (e ApplicationSubsystemTeardownEndedHook) HookName() SystemPluginHookName {
 	return ApplicationSubsystemTeardownEndedPluginHookName
 }
 
-type PluginHook interface {
-	HookName() PluginHookName
+type SystemPluginHook interface {
+	HookName() SystemPluginHookName
 }
 
-type Plugin interface {
-	OnHook(context.Context, PluginHook) error
+type SystemPlugin interface {
+	OnHook(context.Context, SystemPluginHook) error
 	Name() string
 }
 
-type PluginManager interface {
-	DispatchHook(context.Context, PluginHook)
-	AddPlugin(context.Context, Plugin)
+type SystemPluginManager interface {
+	DispatchHook(context.Context, SystemPluginHook)
+	AddPlugin(context.Context, SystemPlugin)
 }
 
-type pluginManager struct {
-	plugins []Plugin
+type systemPluginManager struct {
+	plugins []SystemPlugin
 }
 
-func newPluginManager() *pluginManager {
-	return &pluginManager{}
+func newPluginManager() *systemPluginManager {
+	return &systemPluginManager{}
 }
 
-func (pm *pluginManager) DispatchHook(ctx context.Context, hook PluginHook) {
+func (pm *systemPluginManager) DispatchHook(ctx context.Context, hook SystemPluginHook) {
 	// used an indexed for loop to allow plugins to add more plugins during execution
 	for i := 0; i < len(pm.plugins); i++ {
 		if err := pm.plugins[i].OnHook(ctx, hook); err != nil {
 			// Log the error but continue executing other plugins
 			Log(ctx).Error(
-				"Plugin hook execution failed",
+				"SystemPlugin hook execution failed",
 				slog.String("plugin", pm.plugins[i].Name()),
 				slog.String("hook", string(hook.HookName())),
 				slog.Any(logKeyError, err),
@@ -184,7 +184,7 @@ func (pm *pluginManager) DispatchHook(ctx context.Context, hook PluginHook) {
 	}
 }
 
-func (pm *pluginManager) AddPlugin(ctx context.Context, plugin Plugin) {
+func (pm *systemPluginManager) AddPlugin(ctx context.Context, plugin SystemPlugin) {
 	pm.plugins = append(pm.plugins, plugin)
 	pm.DispatchHook(ctx, PluginAddedHook{PluginName: plugin.Name()})
 }

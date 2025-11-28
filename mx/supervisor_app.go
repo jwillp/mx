@@ -22,7 +22,7 @@ type SupervisedApp interface {
 type supervisedApplicationSubsystem struct {
 	ApplicationSubsystem
 	Options SupervisionOptions
-	pm      PluginManager
+	pm      SystemPluginManager
 
 	// lazy init for channels
 	initOnce sync.Once

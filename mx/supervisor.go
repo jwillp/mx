@@ -45,7 +45,7 @@ func (s *Supervisor) WithApplicationSubsystem(app ApplicationSubsystem, options 
 	return s
 }
 
-func (s *Supervisor) OnHook(ctx context.Context, hook PluginHook) error {
+func (s *Supervisor) OnHook(ctx context.Context, hook SystemPluginHook) error {
 	if h, ok := hook.(SystemInitializationStartedHook); ok {
 		s.pm.Swap(h.System.PluginManager())
 		s.clock.Swap(h.System.Clock())
