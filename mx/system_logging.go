@@ -18,26 +18,6 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error
 
 	switch h := hook.(type) {
 	case SystemInitializationStartedHook:
-		currentUser, _ := user.Current()
-		userID := "unknown"
-		if currentUser != nil {
-			userID = currentUser.Username
-		}
-		hostname, _ := os.Hostname()
-		cwd, _ := os.Getwd()
-
-		logger.Info(h.Name+" v"+h.Version,
-			slog.String("environment", "development"),
-			slog.String("host", hostname),
-			slog.String("user", userID),
-			slog.String("pid", fmt.Sprintf("%d", os.Getpid())),
-			slog.String("cwd", cwd),
-		)
-		logger.Info("Mx Framework v" + Version)
-		if h.Debug {
-			logger.Debug("Debug mode is enabled")
-			logger.Warn("SYSTEM IS IN DEBUG MODE, TURN OFF FOR PRODUCTION")
-		}
 		logger.Info("System initializing ...")
 	case SystemInitializationEndedHook:
 		if h.Error != nil {
@@ -87,6 +67,11 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error
 		logger.Info(fmt.Sprintf("application subsystem %q teardown completed successfully", h.ApplicationSubsystemName))
 
 	case PluginAddedHook:
+		// Display banner when logging plugin is added (it's always first)
+		if h.PluginName == "system.logging" {
+			hl.logSystemInfoBanner(ctx)
+		}
+
 		logger.Debug(fmt.Sprintf("plugin %q added", h.PluginName))
 	}
 
@@ -94,6 +79,31 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error
 }
 
 func (loggingPlugin) Name() string { return "system.logging" }
+
+func (hl loggingPlugin) logSystemInfoBanner(ctx context.Context) {
+	logger := Log(ctx)
+	systemInfo := GetSystemInfoFromContext(ctx)
+	currentUser, _ := user.Current()
+	userID := "unknown"
+	if currentUser != nil {
+		userID = currentUser.Username
+	}
+	hostname, _ := os.Hostname()
+	cwd, _ := os.Getwd()
+
+	logger.Info(systemInfo.Name+" v"+systemInfo.Version,
+		slog.String("environment", string(systemInfo.Environment)),
+		slog.String("host", hostname),
+		slog.String("user", userID),
+		slog.String("pid", fmt.Sprintf("%d", os.Getpid())),
+		slog.String("cwd", cwd),
+	)
+	logger.Info("Mx Framework v" + Version)
+	if systemInfo.Debug {
+		logger.Debug("Debug mode is enabled")
+		logger.Warn("SYSTEM IS IN DEBUG MODE, TURN OFF FOR PRODUCTION")
+	}
+}
 
 func (hl loggingPlugin) logSystemError(ctx context.Context, err error) {
 	Log(ctx).Error("System failed", slog.Any("error", err))

@@ -12,7 +12,7 @@ type subsystemInfoContextKey struct{}
 func newSystemContext(s System) context.Context {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, systemLoggerContextKey{}, s.logger)
-	ctx = context.WithValue(ctx, subsystemInfoContextKey{}, s.info)
+	ctx = context.WithValue(ctx, systemInfoContextKey{}, s.info)
 
 	return ctx
 }
