@@ -3,6 +3,7 @@ package mx
 import (
 	"context"
 	"log/slog"
+	"sync/atomic"
 	"time"
 )
 
@@ -187,4 +188,35 @@ func (pm *systemPluginManager) DispatchHook(ctx context.Context, hook SystemPlug
 func (pm *systemPluginManager) AddPlugin(ctx context.Context, plugin SystemPlugin) {
 	pm.plugins = append(pm.plugins, plugin)
 	pm.DispatchHook(ctx, PluginAddedHook{PluginName: plugin.Name()})
+}
+
+// hotSwappableSystemPluginManager allows swapping the underlying SystemPluginManager at runtime.
+// It is safe for concurrent use.
+type hotSwappableSystemPluginManager struct {
+	pm atomic.Value // holds SystemPluginManager
+}
+
+func newHotSwappableSystemPluginManager(pm SystemPluginManager) *hotSwappableSystemPluginManager {
+	h := &hotSwappableSystemPluginManager{}
+	if pm != nil {
+		h.pm.Store(pm)
+	}
+	return h
+}
+
+func (h *hotSwappableSystemPluginManager) get() SystemPluginManager {
+	v := h.pm.Load()
+	return v.(SystemPluginManager)
+}
+
+func (h *hotSwappableSystemPluginManager) AddPlugin(ctx context.Context, p SystemPlugin) {
+	h.get().AddPlugin(ctx, p)
+}
+
+func (h *hotSwappableSystemPluginManager) DispatchHook(ctx context.Context, hook SystemPluginHook) {
+	h.get().DispatchHook(ctx, hook)
+}
+
+func (h *hotSwappableSystemPluginManager) Swap(pm SystemPluginManager) {
+	h.pm.Store(pm)
 }

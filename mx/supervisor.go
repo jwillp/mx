@@ -21,7 +21,7 @@ type Supervisor struct {
 	// Wrapped supervised applications (created during Initialize)
 	supervisedApplications map[string]*supervisedApplicationSubsystem
 	clock                  *HotSwappableClock
-	pm                     *hotSwappablePluginManager
+	pm                     *hotSwappableSystemPluginManager
 }
 
 func NewSupervisor() *Supervisor {
@@ -29,7 +29,7 @@ func NewSupervisor() *Supervisor {
 		rawApplications:        make(map[string]applicationSubsystemRegistration),
 		supervisedApplications: make(map[string]*supervisedApplicationSubsystem),
 		clock:                  NewHotSwappableClock(nil),
-		pm:                     newHotSwappablePluginManager(nil),
+		pm:                     newHotSwappableSystemPluginManager(nil),
 	}
 }
 
