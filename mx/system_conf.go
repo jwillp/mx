@@ -38,13 +38,19 @@ func NewSystem(name string) *SystemConf {
 	}
 }
 
-func (sc *SystemConf) Run(as ApplicationSubsystem) error {
+func (sc *SystemConf) RunE(app ApplicationSubsystem) error {
 	if sc.loggerHandler == nil {
 		sc.loggerHandler = sc.newDefaultLoggerHandler()
 	}
 
 	sys := newSystem(*sc)
-	return sys.run(as)
+	return sys.run(app)
+}
+
+func (sc *SystemConf) Run(as ApplicationSubsystem) {
+	if err := sc.RunE(as); err != nil {
+		panic(err)
+	}
 }
 
 func (sc *SystemConf) WithEnvironment(env Environment) *SystemConf {

@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/morebec/misas/misas"
 	"github.com/morebec/misas/mx"
-	"time"
 )
 
 func main() {
@@ -15,16 +16,12 @@ func main() {
 		WithDebug(false).
 		WithClock(misas.NewRealTimeClock(time.UTC))
 
-	mx.ApplicationSubsystemRestartPolicyNo
-
 	supervisor := mx.NewSupervisor().
 		WithApplicationSubsystem(HelloWorldApplicationSubsystem{
 			clock: system.Clock(),
 		}, nil)
 
-	if err := system.Run(supervisor); err != nil {
-		panic(err)
-	}
+	system.Run(supervisor)
 }
 
 type HelloWorldApplicationSubsystem struct {
