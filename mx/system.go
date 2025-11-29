@@ -19,23 +19,32 @@ type SystemInfo struct {
 }
 
 type System struct {
-	info           SystemInfo
-	logger         *slog.Logger
-	clock          misas.Clock
-	pm             SystemPluginManager
-	builtInPlugins []SystemPlugin
-	customPlugins  []SystemPlugin
-	commandBus     misas.CommandBus
+	info               SystemInfo
+	logger             *slog.Logger
+	clock              misas.Clock
+	pm                 SystemPluginManager
+	builtInPlugins     []SystemPlugin
+	customPlugins      []SystemPlugin
+	commandBus         misas.CommandBus
+	eventBuses         map[EventBusName]misas.EventBus
+	businessSubsystems map[string]BusinessSubsystemConf
 }
 
 func newSystem(sc *SystemConf) *System {
 	if !sc.commandBus.IsBound() {
-		sc.commandBus.Bind(NewInMemoryCommandBus())
+		sc.commandBus.Bind(misas.NewInMemoryCommandBus())
 	}
-	for _, bsConf := range sc.businessSubsystems {
-		for cmdType, handler := range bsConf.commandHandlers {
-			sc.commandBus.RegisterHandler(cmdType, handler)
+
+	for _, eventBus := range sc.eventBuses {
+		if !eventBus.IsBound() {
+			eventBus.Bind(misas.NewInMemoryEventBus())
 		}
+	}
+
+	// Collect event buses for the system
+	eventBuses := make(map[EventBusName]misas.EventBus, len(sc.eventBuses))
+	for name, eb := range sc.eventBuses {
+		eventBuses[name] = eb
 	}
 
 	return &System{
@@ -45,12 +54,14 @@ func newSystem(sc *SystemConf) *System {
 			Environment: sc.environment,
 			Debug:       sc.debug,
 		},
-		clock:          sc.clock,
-		logger:         slog.New(sc.loggerHandler),
-		pm:             newPluginManager(),
-		builtInPlugins: []SystemPlugin{loggingPlugin{}},
-		customPlugins:  sc.plugins,
-		commandBus:     sc.commandBus,
+		clock:              sc.clock,
+		logger:             slog.New(sc.loggerHandler),
+		pm:                 newPluginManager(),
+		builtInPlugins:     []SystemPlugin{loggingPlugin{}},
+		customPlugins:      sc.plugins,
+		commandBus:         sc.commandBus,
+		eventBuses:         eventBuses,
+		businessSubsystems: sc.businessSubsystems,
 	}
 }
 
@@ -75,13 +86,13 @@ func (s *System) doRun(app ApplicationSubsystem) error {
 	appCtx := newSubsystemContext(ctx, SubsystemInfo{Name: app.Name()})
 
 	// Setup teardown with a fresh context (not the canceled one)
-	defer s.teardownApplication(newSystemContext(*s), appCtx, app)
+	defer s.teardownSystem(newSystemContext(*s), app)
 
-	if err := s.initializeApplication(ctx, appCtx, app); err != nil {
+	if err := s.initializeSystem(ctx, appCtx, app); err != nil {
 		return fmt.Errorf("failed to initialize application %q: %w", app.Name(), err)
 	}
 
-	if err := s.runApplication(ctx, appCtx, app); err != nil {
+	if err := s.executeSystem(ctx, appCtx, app); err != nil {
 		return fmt.Errorf("application %q failed during execution: %w", app.Name(), err)
 	}
 
@@ -128,7 +139,53 @@ func (s *System) loadPlugins(ctx context.Context, app ApplicationSubsystem) {
 	}
 }
 
-func (s *System) initializeApplication(ctx context.Context, appCtx context.Context, app ApplicationSubsystem) error {
+func (s *System) initializeBusinessSubsystems(ctx context.Context) {
+	for _, bsConf := range s.businessSubsystems {
+		bsCtx := newSubsystemContext(ctx, SubsystemInfo{Name: bsConf.name})
+
+		// Dispatch business subsystem initialization started hook
+		initStartedAt := s.clock.Now()
+		s.pm.DispatchHook(bsCtx, BusinessSubsystemInitializationStartedHook{
+			BusinessSubsystemName: bsConf.name,
+			StartedAt:             initStartedAt,
+		})
+
+		// Register command handlers
+		for cmdType, handler := range bsConf.commandHandlers {
+			s.commandBus.RegisterHandler(cmdType, handler)
+		}
+
+		// Register event handlers
+		for eventBusName, handlers := range bsConf.eventHandlers {
+			eb, ok := s.eventBuses[eventBusName]
+			if !ok {
+				Log(bsCtx).Warn(fmt.Sprintf(
+					"some event handler(s) are subscribed to event bus %q, but it does not publish events; skipping registration...",
+					eventBusName,
+				)) // This message can be suppressed by ensuring a call to system.EventBus(eventBusName)
+				s.pm.DispatchHook(ctx, BusinessSubsystemInitializationEndedHook{
+					BusinessSubsystemName: bsConf.name,
+					StartedAt:             initStartedAt,
+					EndedAt:               s.clock.Now(),
+				})
+				continue
+			}
+			for _, h := range handlers {
+				eb.RegisterHandler(h)
+			}
+		}
+
+		// Dispatch business subsystem initialization ended hook
+		s.pm.DispatchHook(bsCtx, BusinessSubsystemInitializationEndedHook{
+			BusinessSubsystemName: bsConf.name,
+			StartedAt:             initStartedAt,
+			EndedAt:               s.clock.Now(),
+			Error:                 nil,
+		})
+	}
+}
+
+func (s *System) initializeSystem(ctx context.Context, appCtx context.Context, app ApplicationSubsystem) error {
 	// Dispatch initialization started hook
 	initializationStartedAt := s.clock.Now()
 	s.pm.DispatchHook(ctx, SystemInitializationStartedHook{
@@ -139,6 +196,8 @@ func (s *System) initializeApplication(ctx context.Context, appCtx context.Conte
 		StartedAt:   initializationStartedAt,
 		System:      s,
 	})
+
+	s.initializeBusinessSubsystems(ctx)
 
 	// Initialize the application subsystem
 	err := app.Initialize(appCtx)
@@ -151,14 +210,14 @@ func (s *System) initializeApplication(ctx context.Context, appCtx context.Conte
 	return err
 }
 
-func (s *System) runApplication(ctx context.Context, appCtx context.Context, app ApplicationSubsystem) error {
+func (s *System) executeSystem(ctx context.Context, appCtx context.Context, app ApplicationSubsystem) error {
 	// Dispatch run started hook
 	runStartedAt := s.clock.Now()
-	s.pm.DispatchHook(ctx, SystemRunStartedHook{StartedAt: runStartedAt})
+	s.pm.DispatchHook(ctx, SystemExecutionStartedHook{StartedAt: runStartedAt})
 
 	// Run the application subsystem
 	err := app.Run(appCtx)
-	s.pm.DispatchHook(ctx, SystemRunEndedHook{
+	s.pm.DispatchHook(ctx, SystemExecutionEndedHook{
 		StartedAt: runStartedAt,
 		EndedAt:   s.clock.Now(),
 		Error:     err,
@@ -167,7 +226,7 @@ func (s *System) runApplication(ctx context.Context, appCtx context.Context, app
 	return err
 }
 
-func (s *System) teardownApplication(ctx context.Context, appCtx context.Context, app ApplicationSubsystem) {
+func (s *System) teardownSystem(ctx context.Context, app ApplicationSubsystem) {
 	// Dispatch teardown started hook
 	teardownStartedAt := s.clock.Now()
 	s.pm.DispatchHook(ctx, SystemTeardownStartedHook{StartedAt: teardownStartedAt})

@@ -15,6 +15,12 @@ type EventBus interface {
 	Publish(context.Context, Event) error
 }
 
+type EventHandlerFunc func(context.Context, Event) error
+
+func (f EventHandlerFunc) Handle(ctx context.Context, event Event) error {
+	return f(ctx, event)
+}
+
 type InMemoryEventBus struct {
 	handlers []EventHandler
 	mu       sync.RWMutex

@@ -25,9 +25,9 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error
 			return nil
 		}
 		logger.Info("System initialized successfully")
-	case SystemRunStartedHook:
-		logger.Info("System running...")
-	case SystemRunEndedHook:
+	case SystemExecutionStartedHook:
+		logger.Info("System execution started...")
+	case SystemExecutionEndedHook:
 		if h.Error != nil {
 			hl.logSystemError(ctx, h.Error)
 			return nil
@@ -65,6 +65,14 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error
 			return nil
 		}
 		logger.Info(fmt.Sprintf("application subsystem %q teardown completed successfully", h.ApplicationSubsystemName))
+	case BusinessSubsystemInitializationStartedHook:
+		logger.Info(fmt.Sprintf("business subsystem %q initializing...", h.BusinessSubsystemName))
+	case BusinessSubsystemInitializationEndedHook:
+		if h.Error != nil {
+			logger.Error(fmt.Sprintf("business subsystem %q failed to initialize", h.BusinessSubsystemName), slog.Any(logKeyError, h.Error))
+			return nil
+		}
+		logger.Info(fmt.Sprintf("business subsystem %q initialized successfully", h.BusinessSubsystemName))
 
 	case PluginAddedHook:
 		// Display banner when logging plugin is added (it's always first)

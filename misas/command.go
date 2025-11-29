@@ -1,6 +1,9 @@
 package misas
 
-import "context"
+import (
+	"context"
+	"sync"
+)
 
 type CommandTypeName string
 type Command interface{ TypeName() CommandTypeName }
@@ -24,4 +27,41 @@ type TypedCommandHandler[T Command] interface {
 type CommandBus interface {
 	HandleCommand(context.Context, Command) CommandResult
 	RegisterHandler(CommandTypeName, CommandHandler)
+}
+
+type InMemoryCommandBus struct {
+	handlers map[CommandTypeName]CommandHandler
+	mu       sync.Mutex
+}
+
+func NewInMemoryCommandBus() *InMemoryCommandBus {
+	return &InMemoryCommandBus{
+		handlers: make(map[CommandTypeName]CommandHandler),
+	}
+}
+
+func (b *InMemoryCommandBus) HandleCommand(ctx context.Context, cmd Command) CommandResult {
+	if cmd == nil {
+		panic("command cannot be nil") // TODO error
+		//return CommandResult{
+		//	Error: ErrNilCommand{},
+		//}
+	}
+	b.mu.Lock()
+	handler, ok := b.handlers[cmd.TypeName()]
+	b.mu.Unlock()
+	if !ok {
+		panic("no command handler registered for command type: " + string(cmd.TypeName())) // TODO error
+		//return CommandResult{
+		//	Error: ErrNoCommandHandlerRegistered{CommandTypeName: cmd.TypeName()},
+		//}
+	}
+
+	return handler.Handle(ctx, cmd)
+}
+
+func (b *InMemoryCommandBus) RegisterHandler(cmdType CommandTypeName, handler CommandHandler) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.handlers[cmdType] = handler
 }

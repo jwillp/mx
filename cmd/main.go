@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/morebec/misas/misas"
@@ -20,8 +21,12 @@ func main() {
 		mx.NewBusinessSubsystem("inventory").
 			WithCommandHandler("some.command", misas.CommandHandlerFunc(func(ctx context.Context, cmd misas.Command) misas.CommandResult {
 				return misas.CommandResult{
-					Payload: errors.New("command handler not implemented"),
+					Payload: fmt.Errorf("some command failed: inventory is out of stock"),
+					//Payload: fmt.Errorf("some command failed: failed to publish event: %w", inventoryEventBus.Publish(ctx, SomeEvent{})),
 				}
+			})).
+			WithEventHandlers("inventory", misas.EventHandlerFunc(func(ctx context.Context, event misas.Event) error {
+				return errors.New("inventory event handler failed")
 			})),
 	)
 
@@ -37,6 +42,7 @@ func main() {
 type HelloWorldApplicationSubsystem struct {
 	clock misas.Clock
 	cb    misas.CommandBus
+	eb    misas.EventBus
 }
 
 func (h HelloWorldApplicationSubsystem) Name() string {
@@ -61,3 +67,7 @@ func (h HelloWorldApplicationSubsystem) Run(ctx context.Context) error {
 type SomeCommand struct{}
 
 func (c SomeCommand) TypeName() misas.CommandTypeName { return "some.command" }
+
+type SomeEvent struct{}
+
+func (e SomeEvent) TypeName() misas.EventTypeName { return "some.event" }

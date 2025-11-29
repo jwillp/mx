@@ -5,60 +5,44 @@ import (
 	"github.com/morebec/misas/misas"
 )
 
+type EventBusName string
+
 type BusinessSubsystemConf struct {
 	name            string
 	commandHandlers map[misas.CommandTypeName]misas.CommandHandler
-	eventHandlers   map[string][]misas.EventHandler
+	eventHandlers   map[EventBusName][]misas.EventHandler
 }
 
 func NewBusinessSubsystem(name string) *BusinessSubsystemConf {
+	if name == "" {
+		panic("business subsystem name cannot be empty")
+	}
 	return &BusinessSubsystemConf{
 		name:            name,
 		commandHandlers: make(map[misas.CommandTypeName]misas.CommandHandler),
-		eventHandlers:   make(map[string][]misas.EventHandler),
+		eventHandlers:   make(map[EventBusName][]misas.EventHandler),
 	}
 }
 
 func (bc *BusinessSubsystemConf) WithCommandHandler(ct misas.CommandTypeName, h misas.CommandHandler) *BusinessSubsystemConf {
+	if ct == "" {
+		panic("business subsystem: " + bc.name + " command type name cannot be empty")
+	}
+	if h == nil {
+		panic("business subsystem: " + bc.name + " command handler cannot be nil")
+	}
 	bc.commandHandlers[ct] = h
 	return bc
 }
 
-func (bc *BusinessSubsystemConf) WithEventHandlers(eventBusName string, handlers ...misas.EventHandler) *BusinessSubsystemConf {
+func (bc *BusinessSubsystemConf) WithEventHandlers(eventBusName EventBusName, handlers ...misas.EventHandler) *BusinessSubsystemConf {
+	if eventBusName == "" {
+		panic("business subsystem: " + bc.name + " event bus name cannot be empty")
+	}
+
 	bc.eventHandlers[eventBusName] = append(bc.eventHandlers[eventBusName], handlers...)
+
 	return bc
-}
-
-type InMemoryCommandBus struct {
-	handlers map[misas.CommandTypeName]misas.CommandHandler
-}
-
-func NewInMemoryCommandBus() *InMemoryCommandBus {
-	return &InMemoryCommandBus{
-		handlers: make(map[misas.CommandTypeName]misas.CommandHandler),
-	}
-}
-
-func (b *InMemoryCommandBus) HandleCommand(ctx context.Context, cmd misas.Command) misas.CommandResult {
-	if cmd == nil {
-		panic("command cannot be nil") // TODO error
-		//return misas.CommandResult{
-		//	Error: misas.ErrNilCommand{},
-		//}
-	}
-	handler, ok := b.handlers[cmd.TypeName()]
-	if !ok {
-		panic("no command handler registered for command type: " + string(cmd.TypeName())) // TODO error
-		//return misas.CommandResult{
-		//	Error: misas.ErrNoCommandHandlerRegistered{CommandTypeName: cmd.TypeName()},
-		//}
-	}
-
-	return handler.Handle(ctx, cmd)
-}
-
-func (b *InMemoryCommandBus) RegisterHandler(cmdType misas.CommandTypeName, handler misas.CommandHandler) {
-	b.handlers[cmdType] = handler
 }
 
 type DynamicBindingCommandBus struct {
@@ -75,4 +59,20 @@ func (d *DynamicBindingCommandBus) HandleCommand(ctx context.Context, cmd misas.
 
 func (d *DynamicBindingCommandBus) RegisterHandler(cmdType misas.CommandTypeName, handler misas.CommandHandler) {
 	d.Get().RegisterHandler(cmdType, handler)
+}
+
+type DynamicBindingEventBus struct {
+	*DynamicBinding[misas.EventBus]
+}
+
+func NewDynamicBindingEventBus() *DynamicBindingEventBus {
+	return &DynamicBindingEventBus{DynamicBinding: NewDynamicBinding[misas.EventBus]()}
+}
+
+func (d DynamicBindingEventBus) RegisterHandler(handler misas.EventHandler) {
+	d.Get().RegisterHandler(handler)
+}
+
+func (d DynamicBindingEventBus) Publish(ctx context.Context, event misas.Event) error {
+	return d.Get().Publish(ctx, event)
 }
