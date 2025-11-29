@@ -24,7 +24,7 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error
 			hl.logSystemError(ctx, h.Error)
 			return nil
 		}
-		logger.Info("System initialized successfully")
+		logger.Info("System initialized successfully", slog.Duration("duration", h.EndedAt.Sub(h.StartedAt)))
 	case SystemExecutionStartedHook:
 		logger.Info("System execution started...")
 	case SystemExecutionEndedHook:
@@ -32,7 +32,7 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error
 			hl.logSystemError(ctx, h.Error)
 			return nil
 		}
-		logger.Info("System executed successfully")
+		logger.Info("System executed successfully", slog.Duration("duration", h.EndedAt.Sub(h.StartedAt)))
 	case ApplicationSubsystemInitializationStartedHook:
 		logger.Info(fmt.Sprintf("application subsystem %q initializing...", h.ApplicationSubsystemName))
 	case ApplicationSubsystemInitializationEndedHook:
@@ -40,7 +40,7 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error
 			hl.logApplicationSubsystemError(ctx, h.ApplicationSubsystemName, h.Error)
 			return nil
 		}
-		logger.Info(fmt.Sprintf("application subsystem %q initialized successfully", h.ApplicationSubsystemName))
+		logger.Info(fmt.Sprintf("application subsystem %q initialized successfully", h.ApplicationSubsystemName), slog.Duration("duration", h.EndedAt.Sub(h.StartedAt)))
 	case ApplicationSubsystemRunStartedHook:
 		logger.Info(fmt.Sprintf("application subsystem %q running...", h.ApplicationSubsystemName))
 	case ApplicationSubsystemRunEndedHook:
@@ -48,7 +48,7 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error
 			hl.logApplicationSubsystemError(ctx, h.ApplicationSubsystemName, h.Error)
 			return nil
 		}
-		logger.Info(fmt.Sprintf("application subsystem %q executed successfully", h.ApplicationSubsystemName))
+		logger.Info(fmt.Sprintf("application subsystem %q executed successfully", h.ApplicationSubsystemName), slog.Duration("duration", h.EndedAt.Sub(h.StartedAt)))
 	case SystemTeardownStartedHook:
 		logger.Info("System tearing down...")
 	case SystemTeardownEndedHook:
@@ -56,7 +56,7 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error
 			hl.logSystemError(ctx, h.Error)
 			return nil
 		}
-		logger.Info("System teardown completed successfully")
+		logger.Info("System teardown completed successfully", slog.Duration("duration", h.EndedAt.Sub(h.StartedAt)))
 	case ApplicationSubsystemTeardownStartedHook:
 		logger.Info(fmt.Sprintf("application subsystem %q tearing down...", h.ApplicationSubsystemName))
 	case ApplicationSubsystemTeardownEndedHook:
@@ -64,15 +64,15 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error
 			hl.logApplicationSubsystemError(ctx, h.ApplicationSubsystemName, h.Error)
 			return nil
 		}
-		logger.Info(fmt.Sprintf("application subsystem %q teardown completed successfully", h.ApplicationSubsystemName))
+		logger.Info(fmt.Sprintf("application subsystem %q teardown completed successfully", h.ApplicationSubsystemName), slog.Duration("duration", h.EndedAt.Sub(h.StartedAt)))
 	case BusinessSubsystemInitializationStartedHook:
 		logger.Info(fmt.Sprintf("business subsystem %q initializing...", h.BusinessSubsystemName))
 	case BusinessSubsystemInitializationEndedHook:
 		if h.Error != nil {
-			logger.Error(fmt.Sprintf("business subsystem %q failed to initialize", h.BusinessSubsystemName), slog.Any(logKeyError, h.Error))
+			logger.Error(fmt.Sprintf("business subsystem %q failed to initialize", h.BusinessSubsystemName), slog.Any(logKeyError, h.Error), slog.Duration("duration", h.EndedAt.Sub(h.StartedAt)))
 			return nil
 		}
-		logger.Info(fmt.Sprintf("business subsystem %q initialized successfully", h.BusinessSubsystemName))
+		logger.Info(fmt.Sprintf("business subsystem %q initialized successfully", h.BusinessSubsystemName), slog.Duration("duration", h.EndedAt.Sub(h.StartedAt)))
 
 	case PluginAddedHook:
 		// Display banner when logging plugin is added (it's always first)
