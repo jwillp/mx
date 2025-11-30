@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/samber/lo"
+	"log/slog"
 
 	"github.com/morebec/misas/misas"
 )
@@ -34,7 +35,7 @@ func (bc *BusinessSubsystemConf) WithCommandHandler(ct misas.CommandTypeName, h 
 	if h == nil {
 		panic(fmt.Sprintf("business subsystem %s: handler cannot be nil", bc.name))
 	}
-	bc.commandHandlers[ct] = newSubsystemAwareCommandHandle(bc.name, h)
+	bc.commandHandlers[ct] = systemCommandHandler(bc.name, h)
 	return bc
 }
 
@@ -44,7 +45,7 @@ func (bc *BusinessSubsystemConf) WithEventHandlers(eventBusName EventBusName, ha
 	}
 
 	handlers = lo.Map(handlers, func(h misas.EventHandler, _ int) misas.EventHandler {
-		return newSubsystemAwareEventHandler(bc.name, h)
+		return newSystemEventHandler(bc.name, h)
 	})
 	bc.eventHandlers[eventBusName] = append(bc.eventHandlers[eventBusName], handlers...)
 
@@ -83,18 +84,53 @@ func (d DynamicBindingEventBus) Publish(ctx context.Context, event misas.Event) 
 	return d.Get().Publish(ctx, event)
 }
 
-func newSubsystemAwareCommandHandle(subsystemName string, h misas.CommandHandler) misas.CommandHandler {
+func systemCommandHandler(subsystemName string, h misas.CommandHandler) misas.CommandHandler {
 	return misas.CommandHandlerFunc(func(ctx context.Context, cmd misas.Command) misas.CommandResult {
-		return h.Handle(newSubsystemContext(ctx, SubsystemInfo{
-			Name: subsystemName,
-		}), cmd)
+		origin := Ctx(ctx).SubsystemInfo().Name
+		ctx = newSubsystemContext(ctx, SubsystemInfo{Name: subsystemName})
+		logger := Log(ctx).With(slog.String("originSubsystem", origin))
+
+		logger.Info(fmt.Sprintf("handling command %q", cmd.TypeName()), slog.String("command", string(cmd.TypeName())))
+		result := h.Handle(ctx, cmd)
+		if result.Error != nil {
+			logger.Error(
+				fmt.Sprintf("failed to handle command %q", cmd.TypeName()),
+				slog.Any(logKeyError, result.Error),
+				slog.String(
+					"command",
+					string(cmd.TypeName()),
+				),
+			)
+		} else {
+			logger.Info(fmt.Sprintf("command %q handled successfully", cmd.TypeName()), slog.String("command", string(cmd.TypeName())))
+		}
+
+		return result
 	})
 }
 
-func newSubsystemAwareEventHandler(subsystemName string, h misas.EventHandler) misas.EventHandler {
-	return misas.EventHandlerFunc(func(ctx context.Context, event misas.Event) error {
-		return h.Handle(newSubsystemContext(ctx, SubsystemInfo{
-			Name: subsystemName,
-		}), event)
+func newSystemEventHandler(subsystemName string, h misas.EventHandler) misas.EventHandler {
+	return misas.EventHandlerFunc(func(ctx context.Context, e misas.Event) error {
+		origin := Ctx(ctx).SubsystemInfo().Name
+		ctx = newSubsystemContext(ctx, SubsystemInfo{Name: subsystemName})
+		logger := Log(ctx).With(slog.String("originSubsystem", origin))
+
+		logger.Info(
+			fmt.Sprintf("handling event %q", e.TypeName()),
+		)
+		err := h.Handle(ctx, e)
+		if err != nil {
+			logger.Error(
+				fmt.Sprintf("failed to handle command %q", e.TypeName()),
+				slog.Any(logKeyError, err),
+				slog.String(
+					"command",
+					string(e.TypeName()),
+				),
+			)
+		} else {
+			logger.Info(fmt.Sprintf("event %q handled successfully", e.TypeName()))
+		}
+		return err
 	})
 }

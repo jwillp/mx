@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/samber/lo"
+	"log/slog"
 
 	"github.com/morebec/misas/misas"
 )
@@ -32,7 +33,7 @@ func (qc *QuerySubsystemConf) WithQueryHandler(qt misas.QueryTypeName, h misas.Q
 	if h == nil {
 		panic(fmt.Sprintf("query subsystem %s: handler cannot be nil", qc.name))
 	}
-	qc.queryHandlers[qt] = newSubsystemAwareQueryHandler(qc.name, h)
+	qc.queryHandlers[qt] = newSystemQueryHandler(qc.name, h)
 
 	return qc
 }
@@ -43,7 +44,7 @@ func (qc *QuerySubsystemConf) WithEventHandlers(eventBusName EventBusName, handl
 	}
 
 	handlers = lo.Map(handlers, func(h misas.EventHandler, _ int) misas.EventHandler {
-		return newSubsystemAwareEventHandler(qc.name, h)
+		return newSystemEventHandler(qc.name, h)
 	})
 	qc.eventHandlers[eventBusName] = append(qc.eventHandlers[eventBusName], handlers...)
 
@@ -66,9 +67,28 @@ func (d *DynamicBindingQueryBus) RegisterHandler(queryType misas.QueryTypeName, 
 	d.Get().RegisterHandler(queryType, handler)
 }
 
-func newSubsystemAwareQueryHandler(subsystemName string, h misas.QueryHandler) misas.QueryHandler {
+func newSystemQueryHandler(subsystemName string, h misas.QueryHandler) misas.QueryHandler {
 	return misas.QueryHandlerFunc(func(ctx context.Context, q misas.Query) misas.QueryResult {
+		origin := Ctx(ctx).SubsystemInfo().Name
 		ctx = newSubsystemContext(ctx, SubsystemInfo{Name: subsystemName})
-		return h.Handle(ctx, q)
+		logger := Log(ctx).With(slog.String("originSubsystem", origin))
+
+		logger.Info(fmt.Sprintf("handling query %q", q.TypeName()), slog.String("query", string(q.TypeName())))
+		result := h.Handle(ctx, q)
+
+		if result.Error != nil {
+			logger.Error(
+				fmt.Sprintf("failed to handle query %q", q.TypeName()),
+				slog.Any(logKeyError, result.Error),
+				slog.String(
+					"query",
+					string(q.TypeName()),
+				),
+			)
+		} else {
+			logger.Info(fmt.Sprintf("successfully handled query %q", q.TypeName()), slog.String("query", string(q.TypeName())))
+		}
+
+		return result
 	})
 }

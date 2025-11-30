@@ -32,7 +32,7 @@ func main() {
 	)
 
 	system.WithQuerySubsystem(
-		mx.NewQuerySubsystem("inventory").
+		mx.NewQuerySubsystem("inventory_reporting").
 			WithQueryHandler("inventory.get_stock", misas.QueryHandlerFunc(func(ctx context.Context, query misas.Query) misas.QueryResult {
 				return misas.QueryResult{
 					Payload: 100,

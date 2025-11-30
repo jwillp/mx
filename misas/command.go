@@ -9,6 +9,7 @@ type CommandTypeName string
 type Command interface{ TypeName() CommandTypeName }
 type CommandResult struct {
 	Payload any
+	Error   error
 }
 type CommandHandler interface {
 	Handle(context.Context, Command) CommandResult
@@ -42,19 +43,18 @@ func NewInMemoryCommandBus() *InMemoryCommandBus {
 
 func (b *InMemoryCommandBus) HandleCommand(ctx context.Context, cmd Command) CommandResult {
 	if cmd == nil {
-		panic("command cannot be nil") // TODO error
-		//return CommandResult{
-		//	Error: ErrNilCommand{},
-		//}
+		return CommandResult{
+			Error: ErrBadLogic.WithMessage("cannot handle nil command"),
+		}
 	}
+
 	b.mu.Lock()
 	handler, ok := b.handlers[cmd.TypeName()]
 	b.mu.Unlock()
 	if !ok {
-		panic("no command handler registered for command type: " + string(cmd.TypeName())) // TODO error
-		//return CommandResult{
-		//	Error: ErrNoCommandHandlerRegistered{CommandTypeName: cmd.TypeName()},
-		//}
+		return CommandResult{
+			Error: ErrBadLogic.WithMessage("no command handler registered for command type: " + string(cmd.TypeName())),
+		}
 	}
 
 	return handler.Handle(ctx, cmd)

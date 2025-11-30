@@ -165,24 +165,7 @@ func (s *System) initializeBusinessSubsystems(ctx context.Context) {
 		}
 
 		// Register event handlers
-		for eventBusName, handlers := range bsConf.eventHandlers {
-			eb, ok := s.eventBuses[eventBusName]
-			if !ok {
-				Log(bsCtx).Warn(fmt.Sprintf(
-					"some event handler(s) are subscribed to event bus %q, but it does not publish events; skipping registration...",
-					eventBusName,
-				)) // This message can be suppressed by ensuring a call to system.EventBus(eventBusName)
-				s.pm.DispatchHook(bsCtx, BusinessSubsystemInitializationEndedHook{
-					BusinessSubsystemName: bsConf.name,
-					StartedAt:             initStartedAt,
-					EndedAt:               s.clock.Now(),
-				})
-				continue
-			}
-			for _, h := range handlers {
-				eb.RegisterHandler(h)
-			}
-		}
+		s.registerEventHandlers(bsCtx, bsConf.eventHandlers)
 
 		// Dispatch business subsystem initialization ended hook
 		s.pm.DispatchHook(bsCtx, BusinessSubsystemInitializationEndedHook{
@@ -211,24 +194,7 @@ func (s *System) initializeQuerySubsystems(ctx context.Context) {
 		}
 
 		// Register event handlers
-		for eventBusName, handlers := range qsConf.eventHandlers {
-			eb, ok := s.eventBuses[eventBusName]
-			if !ok {
-				Log(qsCtx).Warn(fmt.Sprintf(
-					"some event handler(s) are subscribed to event bus %q, but it does not publish events; skipping registration...",
-					eventBusName,
-				)) // This message can be suppressed by ensuring a call to system.EventBus(eventBusName)
-				s.pm.DispatchHook(qsCtx, BusinessSubsystemInitializationEndedHook{
-					BusinessSubsystemName: qsConf.name,
-					StartedAt:             initStartedAt,
-					EndedAt:               s.clock.Now(),
-				})
-				continue
-			}
-			for _, h := range handlers {
-				eb.RegisterHandler(h)
-			}
-		}
+		s.registerEventHandlers(qsCtx, qsConf.eventHandlers)
 
 		// Dispatch query subsystem initialization ended hook
 		s.pm.DispatchHook(qsCtx, QuerySubsystemInitializationEndedHook{
@@ -237,6 +203,22 @@ func (s *System) initializeQuerySubsystems(ctx context.Context) {
 			EndedAt:            s.clock.Now(),
 			Error:              nil,
 		})
+	}
+}
+
+func (s *System) registerEventHandlers(qsCtx context.Context, handlers map[EventBusName][]misas.EventHandler) {
+	for eventBusName, busHandlers := range handlers {
+		eb, ok := s.eventBuses[eventBusName]
+		if !ok {
+			Log(qsCtx).Warn(fmt.Sprintf(
+				"some event handler(s) are subscribed to event bus %q, but it does not publish events; skipping registration...",
+				eventBusName,
+			)) // This message can be suppressed by ensuring a call to system.EventBus(eventBusName)
+			continue
+		}
+		for _, h := range busHandlers {
+			eb.RegisterHandler(h)
+		}
 	}
 }
 

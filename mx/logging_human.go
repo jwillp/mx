@@ -14,6 +14,8 @@ import (
 	"github.com/samber/lo"
 )
 
+const baseScopeColumnSize = 25
+
 // humanReadableLogHandler creates a development-focused log handler inspired by Spring Boot's logging format.
 // It outputs logs with proper coloring and subsystem information.
 //
@@ -39,8 +41,9 @@ type humanReadableLogHandler struct {
 
 	groups []string
 
-	opts  slog.HandlerOptions
-	attrs []slog.Attr
+	opts            slog.HandlerOptions
+	attrs           []slog.Attr
+	scopeColumnSize int
 }
 
 // NewHumanReadableLogHandler creates a new development-focused log handler with colored output.
@@ -51,19 +54,20 @@ func NewHumanReadableLogHandler(w io.Writer, opts *slog.HandlerOptions) slog.Han
 		}
 	}
 
-	return humanReadableLogHandler{
-		w:         w,
-		opts:      *opts,
-		mu:        &sync.Mutex{},
-		colorizer: aurora.New(aurora.WithColors(true)),
+	return &humanReadableLogHandler{
+		w:               w,
+		opts:            *opts,
+		mu:              &sync.Mutex{},
+		colorizer:       aurora.New(aurora.WithColors(true)),
+		scopeColumnSize: baseScopeColumnSize,
 	}
 }
 
-func (h humanReadableLogHandler) Enabled(_ context.Context, level slog.Level) bool {
+func (h *humanReadableLogHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return level >= h.opts.Level.Level()
 }
 
-func (h humanReadableLogHandler) Handle(ctx context.Context, record slog.Record) error {
+func (h *humanReadableLogHandler) Handle(ctx context.Context, record slog.Record) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -76,16 +80,19 @@ func (h humanReadableLogHandler) Handle(ctx context.Context, record slog.Record)
 	})
 
 	scopeName := h.findScope(ctx)
-	logRecord := humanReadableLogRecord{
-		colorizer: h.colorizer,
-		timestamp: record.Time,
-		level:     record.Level,
-		scope:     scopeName,
-		message:   record.Message,
-		attrs:     attrs,
+	logRecord := &humanReadableLogRecord{
+		colorizer:       h.colorizer,
+		timestamp:       record.Time,
+		level:           record.Level,
+		scope:           scopeName,
+		message:         record.Message,
+		attrs:           attrs,
+		scopeColumnSize: h.scopeColumnSize,
 	}
 
 	_, err := fmt.Fprintln(h.w, logRecord.String())
+	h.scopeColumnSize = logRecord.scopeColumnSize
+
 	return err
 }
 
@@ -98,10 +105,11 @@ type humanReadableLogRecord struct {
 	message   string
 	attrs     []slog.Attr
 
-	lineColor aurora.Color
+	lineColor       aurora.Color
+	scopeColumnSize int
 }
 
-func (r humanReadableLogRecord) String() string {
+func (r *humanReadableLogRecord) String() string {
 	var colorOverride *aurora.Color
 	switch r.level {
 	case slog.LevelDebug:
@@ -126,7 +134,7 @@ func (r humanReadableLogRecord) String() string {
 	return line
 }
 
-func (r humanReadableLogRecord) formatTimestamp(colorOverride *aurora.Color) string {
+func (r *humanReadableLogRecord) formatTimestamp(colorOverride *aurora.Color) string {
 	timestamp := r.timestamp.Format("2006-01-02 15:04:05.000")
 
 	if colorOverride == nil {
@@ -136,7 +144,7 @@ func (r humanReadableLogRecord) formatTimestamp(colorOverride *aurora.Color) str
 	return timestamp
 }
 
-func (r humanReadableLogRecord) formatAttributes(colorOverride *aurora.Color) string {
+func (r *humanReadableLogRecord) formatAttributes(colorOverride *aurora.Color) string {
 	attrs := lo.Map(r.attrs, func(attr slog.Attr, _ int) string {
 		if attr.Key == logKeySubsystem {
 			return "" // skip subsystem attribute as it's already displayed in the scope
@@ -157,7 +165,7 @@ func (r humanReadableLogRecord) formatAttributes(colorOverride *aurora.Color) st
 	return strings.Join(attrs, " ")
 }
 
-func (r humanReadableLogRecord) formatLevel(colorOverride *aurora.Color) string {
+func (r *humanReadableLogRecord) formatLevel(colorOverride *aurora.Color) string {
 	level := strings.ToUpper(r.level.String())
 	level = fmt.Sprintf("%-5s", level)
 
@@ -179,7 +187,7 @@ func (r humanReadableLogRecord) formatLevel(colorOverride *aurora.Color) string 
 	return level
 }
 
-func (r humanReadableLogRecord) formatScope(colorOverride *aurora.Color) string {
+func (r *humanReadableLogRecord) formatScope(colorOverride *aurora.Color) string {
 	scope := r.scope
 	if colorOverride == nil && scope != "system" {
 		hash := fnv.New32a()
@@ -188,8 +196,11 @@ func (r humanReadableLogRecord) formatScope(colorOverride *aurora.Color) string 
 		scope = r.colorizer.Index(aurora.ColorIndex(colorIndex), scope).String()
 	}
 
-	columnSize := 20
-	padding := columnSize - len(r.scope) - 2
+	padding := r.scopeColumnSize - len(r.scope) - 2
+	if padding < 0 {
+		r.scopeColumnSize = len(r.scope) + 2
+		padding = 0
+	}
 
 	return fmt.Sprintf("[%s]%s", scope, strings.Repeat(" ", padding))
 }
@@ -213,7 +224,7 @@ func calculateScopeColorIndex(hash uint32) uint8 {
 	return safeColors[index]
 }
 
-func (r humanReadableLogRecord) formatMessage(colorOverride *aurora.Color) string {
+func (r *humanReadableLogRecord) formatMessage(colorOverride *aurora.Color) string {
 	message := r.message
 
 	if colorOverride == nil {
@@ -234,22 +245,38 @@ func (r humanReadableLogRecord) formatMessage(colorOverride *aurora.Color) strin
 	return message
 }
 
-func (h humanReadableLogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	if len(attrs) == 0 {
-		return h
+func (h *humanReadableLogHandler) clone() *humanReadableLogHandler {
+	newH := *h
+	newH.mu = &sync.Mutex{}
+
+	if len(h.attrs) > 0 {
+		attrsCopy := make([]slog.Attr, len(h.attrs))
+		copy(attrsCopy, h.attrs)
+		newH.attrs = attrsCopy
 	}
 
-	h.attrs = append(h.attrs, attrs...)
+	if len(h.groups) > 0 {
+		groupsCopy := make([]string, len(h.groups))
+		copy(groupsCopy, h.groups)
+		newH.groups = groupsCopy
+	}
 
-	return h
+	return &newH
 }
 
-func (h humanReadableLogHandler) WithGroup(name string) slog.Handler {
-	h.groups = append(h.groups, name)
-	return h
+func (h *humanReadableLogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	newH := h.clone()
+	newH.attrs = append(newH.attrs, attrs...)
+	return newH
 }
 
-func (h humanReadableLogHandler) findScope(ctx context.Context) string {
+func (h *humanReadableLogHandler) WithGroup(name string) slog.Handler {
+	newH := h.clone()
+	newH.groups = append(newH.groups, name)
+	return newH
+}
+
+func (h *humanReadableLogHandler) findScope(ctx context.Context) string {
 	scope := "system"
 	if subsystem, ok := ctx.Value(subsystemInfoContextKey{}).(SubsystemInfo); ok && subsystem.Name != "" {
 		scope = subsystem.Name

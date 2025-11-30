@@ -9,6 +9,7 @@ type QueryTypeName string
 type Query interface{ TypeName() QueryTypeName }
 type QueryResult struct {
 	Payload any
+	Error   error
 }
 type QueryHandler interface {
 	Handle(context.Context, Query) QueryResult
@@ -42,14 +43,18 @@ func NewInMemoryQueryBus() *InMemoryQueryBus {
 
 func (b *InMemoryQueryBus) HandleQuery(ctx context.Context, query Query) QueryResult {
 	if query == nil {
-		panic("query cannot be nil")
+		return QueryResult{
+			Error: ErrBadLogic.WithMessage("query cannot be nil"),
+		}
 	}
 	b.mu.Lock()
 	handler, ok := b.handlers[query.TypeName()]
 	b.mu.Unlock()
 
 	if !ok {
-		panic("no handler registered for query type: " + query.TypeName())
+		return QueryResult{
+			Error: ErrBadLogic.WithMessage("no handler registered for query type: " + string(query.TypeName())),
+		}
 	}
 
 	return handler.Handle(ctx, query)
