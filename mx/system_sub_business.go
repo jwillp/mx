@@ -2,6 +2,8 @@ package mx
 
 import (
 	"context"
+	"fmt"
+	"github.com/samber/lo"
 
 	"github.com/morebec/misas/misas"
 )
@@ -27,20 +29,23 @@ func NewBusinessSubsystem(name string) *BusinessSubsystemConf {
 
 func (bc *BusinessSubsystemConf) WithCommandHandler(ct misas.CommandTypeName, h misas.CommandHandler) *BusinessSubsystemConf {
 	if ct == "" {
-		panic("business subsystem: " + bc.name + " command type name cannot be empty")
+		panic(fmt.Sprintf("business subsystem %s: command type name cannot be empty", bc.name))
 	}
 	if h == nil {
-		panic("business subsystem: " + bc.name + " command handler cannot be nil")
+		panic(fmt.Sprintf("business subsystem %s: handler cannot be nil", bc.name))
 	}
-	bc.commandHandlers[ct] = h
+	bc.commandHandlers[ct] = newSubsystemAwareCommandHandle(bc.name, h)
 	return bc
 }
 
 func (bc *BusinessSubsystemConf) WithEventHandlers(eventBusName EventBusName, handlers ...misas.EventHandler) *BusinessSubsystemConf {
 	if eventBusName == "" {
-		panic("business subsystem: " + bc.name + " event bus name cannot be empty")
+		panic(fmt.Sprintf("business subsystem %s: event bus name cannot be empty", bc.name))
 	}
 
+	handlers = lo.Map(handlers, func(h misas.EventHandler, _ int) misas.EventHandler {
+		return newSubsystemAwareEventHandler(bc.name, h)
+	})
 	bc.eventHandlers[eventBusName] = append(bc.eventHandlers[eventBusName], handlers...)
 
 	return bc
@@ -76,4 +81,20 @@ func (d DynamicBindingEventBus) RegisterHandler(handler misas.EventHandler) {
 
 func (d DynamicBindingEventBus) Publish(ctx context.Context, event misas.Event) error {
 	return d.Get().Publish(ctx, event)
+}
+
+func newSubsystemAwareCommandHandle(subsystemName string, h misas.CommandHandler) misas.CommandHandler {
+	return misas.CommandHandlerFunc(func(ctx context.Context, cmd misas.Command) misas.CommandResult {
+		return h.Handle(newSubsystemContext(ctx, SubsystemInfo{
+			Name: subsystemName,
+		}), cmd)
+	})
+}
+
+func newSubsystemAwareEventHandler(subsystemName string, h misas.EventHandler) misas.EventHandler {
+	return misas.EventHandlerFunc(func(ctx context.Context, event misas.Event) error {
+		return h.Handle(newSubsystemContext(ctx, SubsystemInfo{
+			Name: subsystemName,
+		}), event)
+	})
 }

@@ -2,8 +2,7 @@ package mx
 
 import (
 	"context"
-
-	"github.com/morebec/misas/misas"
+	"github.com/morebec/misas/mtime"
 )
 
 type ApplicationSubsystem interface {
@@ -23,10 +22,10 @@ type ApplicationSubsystem interface {
 type managedApplicationSubsystem struct {
 	ApplicationSubsystem
 	pm    SystemPluginManager
-	clock misas.Clock
+	clock mtime.Clock
 }
 
-func newManagedApplicationSubsystem(app ApplicationSubsystem, pm SystemPluginManager, clock misas.Clock) *managedApplicationSubsystem {
+func newManagedApplicationSubsystem(app ApplicationSubsystem, pm SystemPluginManager, clock mtime.Clock) *managedApplicationSubsystem {
 	return &managedApplicationSubsystem{
 		ApplicationSubsystem: app,
 		pm:                   pm,

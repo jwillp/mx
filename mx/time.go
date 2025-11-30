@@ -1,43 +1,19 @@
 package mx
 
 import (
-	"github.com/morebec/misas/misas"
+	"github.com/morebec/misas/mtime"
 	"time"
 )
-
-// ManualClock implementation of a clock that allows to manually specify the
-// values that the clock returns. This implementation's primary use case is in
-// tests where greater control of time might be needed.
-type ManualClock struct {
-	currentDateTime time.Time
-}
-
-func NewManualClock(currentDateTime time.Time) *ManualClock {
-	return &ManualClock{currentDateTime: currentDateTime}
-}
-
-// Tick makes the clock tick by adding a specific duration to its current internal date time.
-func (c *ManualClock) Tick(duration time.Duration) {
-	c.currentDateTime = c.currentDateTime.Add(duration)
-}
-
-func (c *ManualClock) Set(dt time.Time) {
-	c.currentDateTime = dt
-}
-
-func (c *ManualClock) Now() time.Time {
-	return c.currentDateTime
-}
 
 // DynamicBindingClock is an implementation of a clock that allows to change its
 // underlying clock at runtime using atomic operations for concurrency safety.
 type DynamicBindingClock struct {
-	*DynamicBinding[misas.Clock]
+	*DynamicBinding[mtime.Clock]
 }
 
 func NewDynamicBindingClock() *DynamicBindingClock {
 	return &DynamicBindingClock{
-		DynamicBinding: NewDynamicBinding[misas.Clock](),
+		DynamicBinding: NewDynamicBinding[mtime.Clock](),
 	}
 }
 

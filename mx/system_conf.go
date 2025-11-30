@@ -1,6 +1,7 @@
 package mx
 
 import (
+	"github.com/morebec/misas/mtime"
 	"github.com/samber/lo"
 	"log/slog"
 	"os"
@@ -41,7 +42,7 @@ func NewSystem(name string) *SystemConf {
 		debug:       true,
 		clock: func() *DynamicBindingClock {
 			b := NewDynamicBindingClock()
-			b.Bind(misas.NewRealTimeClock(time.UTC))
+			b.Bind(mtime.NewRealTimeClock(time.UTC))
 			return b
 		}(),
 		businessSubsystems: make(map[string]BusinessSubsystemConf, 10),
@@ -86,13 +87,13 @@ func (sc *SystemConf) WithDebug(debug bool) *SystemConf {
 	return sc
 }
 
-func (sc *SystemConf) WithClock(c misas.Clock) *SystemConf {
+func (sc *SystemConf) WithClock(c mtime.Clock) *SystemConf {
 	sc.clock.Bind(c)
 
 	return sc
 }
 
-func (sc *SystemConf) Clock() misas.Clock {
+func (sc *SystemConf) Clock() mtime.Clock {
 	return sc.clock
 }
 

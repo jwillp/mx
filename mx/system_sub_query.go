@@ -2,6 +2,8 @@ package mx
 
 import (
 	"context"
+	"fmt"
+	"github.com/samber/lo"
 
 	"github.com/morebec/misas/misas"
 )
@@ -9,11 +11,13 @@ import (
 type QuerySubsystemConf struct {
 	name          string
 	queryHandlers map[misas.QueryTypeName]misas.QueryHandler
+	eventHandlers map[EventBusName][]misas.EventHandler
 }
 
 func NewQuerySubsystem(name string) *QuerySubsystemConf {
 	if name == "" {
-		panic("query subsystem name cannot be empty")
+		panic("name of query subsystem cannot be empty")
+
 	}
 	return &QuerySubsystemConf{
 		name:          name,
@@ -23,12 +27,26 @@ func NewQuerySubsystem(name string) *QuerySubsystemConf {
 
 func (qc *QuerySubsystemConf) WithQueryHandler(qt misas.QueryTypeName, h misas.QueryHandler) *QuerySubsystemConf {
 	if qt == "" {
-		panic("query subsystem: " + qc.name + " query type name cannot be empty")
+		panic(fmt.Sprintf("query subsystem %s: query type name cannot be empty", qc.name))
 	}
 	if h == nil {
-		panic("query subsystem: " + qc.name + " query handler cannot be nil")
+		panic(fmt.Sprintf("query subsystem %s: handler cannot be nil", qc.name))
 	}
-	qc.queryHandlers[qt] = h
+	qc.queryHandlers[qt] = newSubsystemAwareQueryHandler(qc.name, h)
+
+	return qc
+}
+
+func (qc *QuerySubsystemConf) WithEventHandlers(eventBusName EventBusName, handlers ...misas.EventHandler) *QuerySubsystemConf {
+	if eventBusName == "" {
+		panic(fmt.Sprintf("query subsystem %s: event bus name cannot be empty", qc.name))
+	}
+
+	handlers = lo.Map(handlers, func(h misas.EventHandler, _ int) misas.EventHandler {
+		return newSubsystemAwareEventHandler(qc.name, h)
+	})
+	qc.eventHandlers[eventBusName] = append(qc.eventHandlers[eventBusName], handlers...)
+
 	return qc
 }
 
@@ -46,4 +64,11 @@ func (d *DynamicBindingQueryBus) HandleQuery(ctx context.Context, query misas.Qu
 
 func (d *DynamicBindingQueryBus) RegisterHandler(queryType misas.QueryTypeName, handler misas.QueryHandler) {
 	d.Get().RegisterHandler(queryType, handler)
+}
+
+func newSubsystemAwareQueryHandler(subsystemName string, h misas.QueryHandler) misas.QueryHandler {
+	return misas.QueryHandlerFunc(func(ctx context.Context, q misas.Query) misas.QueryResult {
+		ctx = newSubsystemContext(ctx, SubsystemInfo{Name: subsystemName})
+		return h.Handle(ctx, q)
+	})
 }

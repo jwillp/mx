@@ -3,6 +3,7 @@ package mx
 import (
 	"context"
 	"fmt"
+	"github.com/morebec/misas/mtime"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -21,7 +22,7 @@ type SystemInfo struct {
 type System struct {
 	info               SystemInfo
 	logger             *slog.Logger
-	clock              misas.Clock
+	clock              mtime.Clock
 	pm                 SystemPluginManager
 	builtInPlugins     []SystemPlugin
 	customPlugins      []SystemPlugin
@@ -209,6 +210,26 @@ func (s *System) initializeQuerySubsystems(ctx context.Context) {
 			s.queryBus.RegisterHandler(queryType, handler)
 		}
 
+		// Register event handlers
+		for eventBusName, handlers := range qsConf.eventHandlers {
+			eb, ok := s.eventBuses[eventBusName]
+			if !ok {
+				Log(qsCtx).Warn(fmt.Sprintf(
+					"some event handler(s) are subscribed to event bus %q, but it does not publish events; skipping registration...",
+					eventBusName,
+				)) // This message can be suppressed by ensuring a call to system.EventBus(eventBusName)
+				s.pm.DispatchHook(qsCtx, BusinessSubsystemInitializationEndedHook{
+					BusinessSubsystemName: qsConf.name,
+					StartedAt:             initStartedAt,
+					EndedAt:               s.clock.Now(),
+				})
+				continue
+			}
+			for _, h := range handlers {
+				eb.RegisterHandler(h)
+			}
+		}
+
 		// Dispatch query subsystem initialization ended hook
 		s.pm.DispatchHook(qsCtx, QuerySubsystemInitializationEndedHook{
 			QuerySubsystemName: qsConf.name,
@@ -280,7 +301,7 @@ func (s *System) teardownSystem(ctx context.Context, app ApplicationSubsystem) {
 }
 
 func (s *System) PluginManager() SystemPluginManager { return s.pm }
-func (s *System) Clock() misas.Clock                 { return s.clock }
+func (s *System) Clock() mtime.Clock                 { return s.clock }
 
 type SubsystemInfo struct {
 	Name string

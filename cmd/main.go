@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/morebec/misas/mtime"
 	"time"
 
 	"github.com/morebec/misas/misas"
@@ -15,7 +16,7 @@ func main() {
 		//WithEnvironment(mx.EnvironmentProduction).
 		WithEnvironment(mx.EnvironmentDevelopment).
 		WithDebug(false).
-		WithClock(misas.NewRealTimeClock(time.UTC))
+		WithClock(mtime.NewRealTimeClock(time.UTC))
 
 	system.WithBusinessSubsystem(
 		mx.NewBusinessSubsystem("inventory").
@@ -50,7 +51,7 @@ func main() {
 }
 
 type HelloWorldApplicationSubsystem struct {
-	clock misas.Clock
+	clock mtime.Clock
 	cb    misas.CommandBus
 	qb    misas.QueryBus
 }
