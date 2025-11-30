@@ -23,20 +23,28 @@ func newSubsystemContext(ctx context.Context, info SubsystemInfo) context.Contex
 	return ctx
 }
 
-func GetSubsystemInfoFromContext(ctx context.Context) SubsystemInfo {
-	subsystem, ok := ctx.Value(subsystemInfoContextKey{}).(SubsystemInfo)
-	if !ok {
-		return SubsystemInfo{}
-	}
-
-	return subsystem
+type Context struct {
+	context.Context
 }
 
-func GetSystemInfoFromContext(ctx context.Context) SystemInfo {
-	systemInfo, ok := ctx.Value(systemInfoContextKey{}).(SystemInfo)
+func Ctx(ctx context.Context) Context {
+	return Context{ctx}
+}
+
+func (c Context) SystemInfo() SystemInfo {
+	systemInfo, ok := c.Context.Value(systemInfoContextKey{}).(SystemInfo)
 	if !ok {
 		return SystemInfo{}
 	}
 
 	return systemInfo
+}
+
+func (c Context) SubsystemInfo() SubsystemInfo {
+	subsystemInfo, ok := c.Context.Value(subsystemInfoContextKey{}).(SubsystemInfo)
+	if !ok {
+		return SubsystemInfo{}
+	}
+
+	return subsystemInfo
 }

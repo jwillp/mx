@@ -98,7 +98,7 @@ func (loggingPlugin) Name() string { return "system.logging" }
 
 func (hl loggingPlugin) logSystemInfoBanner(ctx context.Context) {
 	logger := Log(ctx)
-	systemInfo := GetSystemInfoFromContext(ctx)
+	systemInfo := Ctx(ctx).SystemInfo()
 	currentUser, _ := user.Current()
 	userID := "unknown"
 	if currentUser != nil {

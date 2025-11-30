@@ -11,7 +11,7 @@ const logKeyError = "error"
 func Log(ctx context.Context) ContextualLogger {
 	logger := getLoggerFromContext(ctx)
 
-	subsystemInfo := GetSubsystemInfoFromContext(ctx)
+	subsystemInfo := Ctx(ctx).SubsystemInfo()
 	if (subsystemInfo != SubsystemInfo{}) {
 		logger = logger.With(slog.String(logKeySubsystem, subsystemInfo.Name))
 	}
