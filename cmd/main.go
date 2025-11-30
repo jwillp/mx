@@ -30,10 +30,20 @@ func main() {
 			})),
 	)
 
+	system.WithQuerySubsystem(
+		mx.NewQuerySubsystem("inventory").
+			WithQueryHandler("inventory.get_stock", misas.QueryHandlerFunc(func(ctx context.Context, query misas.Query) misas.QueryResult {
+				return misas.QueryResult{
+					Payload: 100,
+				}
+			})),
+	)
+
 	supervisor := mx.NewSupervisor().
 		WithApplicationSubsystem(HelloWorldApplicationSubsystem{
 			clock: system.Clock(),
 			cb:    system.CommandBus(),
+			qb:    system.QueryBus(),
 		}, nil)
 
 	system.Run(supervisor)
@@ -42,7 +52,7 @@ func main() {
 type HelloWorldApplicationSubsystem struct {
 	clock misas.Clock
 	cb    misas.CommandBus
-	eb    misas.EventBus
+	qb    misas.QueryBus
 }
 
 func (h HelloWorldApplicationSubsystem) Name() string {
@@ -61,7 +71,13 @@ func (h HelloWorldApplicationSubsystem) Run(ctx context.Context) error {
 	//mx.Log(ctx).Debug("Some debug information here.")
 
 	result := h.cb.HandleCommand(ctx, SomeCommand{})
-	return result.Payload.(error)
+	if err, ok := result.Payload.(error); ok && err != nil {
+		// Try a query
+		queryResult := h.qb.HandleQuery(ctx, GetStockQuery{})
+		_ = queryResult
+		return err
+	}
+	return nil
 }
 
 type SomeCommand struct{}
@@ -71,3 +87,7 @@ func (c SomeCommand) TypeName() misas.CommandTypeName { return "some.command" }
 type SomeEvent struct{}
 
 func (e SomeEvent) TypeName() misas.EventTypeName { return "some.event" }
+
+type GetStockQuery struct{}
+
+func (q GetStockQuery) TypeName() misas.QueryTypeName { return "inventory.get_stock" }

@@ -29,6 +29,8 @@ type SystemConf struct {
 	businessSubsystems map[string]BusinessSubsystemConf
 	commandBus         *DynamicBindingCommandBus
 	eventBuses         map[EventBusName]*DynamicBindingEventBus
+	querySubsystems    map[string]QuerySubsystemConf
+	queryBus           *DynamicBindingQueryBus
 }
 
 func NewSystem(name string) *SystemConf {
@@ -45,6 +47,8 @@ func NewSystem(name string) *SystemConf {
 		businessSubsystems: make(map[string]BusinessSubsystemConf, 10),
 		commandBus:         NewDynamicBindingCommandBus(),
 		eventBuses:         make(map[EventBusName]*DynamicBindingEventBus, 10),
+		querySubsystems:    make(map[string]QuerySubsystemConf, 10),
+		queryBus:           NewDynamicBindingQueryBus(),
 	}
 }
 
@@ -113,6 +117,14 @@ func (sc *SystemConf) EventBus(s EventBusName) misas.EventBus {
 
 	return sc.eventBuses[s]
 }
+
+func (sc *SystemConf) WithQuerySubsystem(qc *QuerySubsystemConf) *SystemConf {
+	sc.querySubsystems[qc.name] = *qc
+
+	return sc
+}
+
+func (sc *SystemConf) QueryBus() misas.QueryBus { return sc.queryBus }
 
 func (sc *SystemConf) WithPlugin(p SystemPlugin) *SystemConf {
 	sc.plugins = append(sc.plugins, p)

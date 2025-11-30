@@ -73,6 +73,14 @@ func (hl loggingPlugin) OnHook(ctx context.Context, hook SystemPluginHook) error
 			return nil
 		}
 		logger.Info(fmt.Sprintf("business subsystem %q initialized successfully", h.BusinessSubsystemName), slog.Duration("duration", h.EndedAt.Sub(h.StartedAt)))
+	case QuerySubsystemInitializationStartedHook:
+		logger.Info(fmt.Sprintf("query subsystem %q initializing...", h.QuerySubsystemName))
+	case QuerySubsystemInitializationEndedHook:
+		if h.Error != nil {
+			logger.Error(fmt.Sprintf("query subsystem %q failed to initialize", h.QuerySubsystemName), slog.Any(logKeyError, h.Error), slog.Duration("duration", h.EndedAt.Sub(h.StartedAt)))
+			return nil
+		}
+		logger.Info(fmt.Sprintf("query subsystem %q initialized successfully", h.QuerySubsystemName), slog.Duration("duration", h.EndedAt.Sub(h.StartedAt)))
 
 	case PluginAddedHook:
 		// Display banner when logging plugin is added (it's always first)

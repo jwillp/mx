@@ -28,6 +28,8 @@ type System struct {
 	commandBus         misas.CommandBus
 	eventBuses         map[EventBusName]misas.EventBus
 	businessSubsystems map[string]BusinessSubsystemConf
+	queryBus           misas.QueryBus
+	querySubsystems    map[string]QuerySubsystemConf
 }
 
 func newSystem(sc *SystemConf) *System {
@@ -39,6 +41,10 @@ func newSystem(sc *SystemConf) *System {
 		if !eventBus.IsBound() {
 			eventBus.Bind(misas.NewInMemoryEventBus())
 		}
+	}
+
+	if !sc.queryBus.IsBound() {
+		sc.queryBus.Bind(misas.NewInMemoryQueryBus())
 	}
 
 	// Collect event buses for the system
@@ -62,6 +68,8 @@ func newSystem(sc *SystemConf) *System {
 		commandBus:         sc.commandBus,
 		eventBuses:         eventBuses,
 		businessSubsystems: sc.businessSubsystems,
+		queryBus:           sc.queryBus,
+		querySubsystems:    sc.querySubsystems,
 	}
 }
 
@@ -163,7 +171,7 @@ func (s *System) initializeBusinessSubsystems(ctx context.Context) {
 					"some event handler(s) are subscribed to event bus %q, but it does not publish events; skipping registration...",
 					eventBusName,
 				)) // This message can be suppressed by ensuring a call to system.EventBus(eventBusName)
-				s.pm.DispatchHook(ctx, BusinessSubsystemInitializationEndedHook{
+				s.pm.DispatchHook(bsCtx, BusinessSubsystemInitializationEndedHook{
 					BusinessSubsystemName: bsConf.name,
 					StartedAt:             initStartedAt,
 					EndedAt:               s.clock.Now(),
@@ -185,6 +193,32 @@ func (s *System) initializeBusinessSubsystems(ctx context.Context) {
 	}
 }
 
+func (s *System) initializeQuerySubsystems(ctx context.Context) {
+	for _, qsConf := range s.querySubsystems {
+		qsCtx := newSubsystemContext(ctx, SubsystemInfo{Name: qsConf.name})
+
+		// Dispatch query subsystem initialization started hook
+		initStartedAt := s.clock.Now()
+		s.pm.DispatchHook(qsCtx, QuerySubsystemInitializationStartedHook{
+			QuerySubsystemName: qsConf.name,
+			StartedAt:          initStartedAt,
+		})
+
+		// Register query handlers
+		for queryType, handler := range qsConf.queryHandlers {
+			s.queryBus.RegisterHandler(queryType, handler)
+		}
+
+		// Dispatch query subsystem initialization ended hook
+		s.pm.DispatchHook(qsCtx, QuerySubsystemInitializationEndedHook{
+			QuerySubsystemName: qsConf.name,
+			StartedAt:          initStartedAt,
+			EndedAt:            s.clock.Now(),
+			Error:              nil,
+		})
+	}
+}
+
 func (s *System) initializeSystem(ctx context.Context, appCtx context.Context, app ApplicationSubsystem) error {
 	// Dispatch initialization started hook
 	initializationStartedAt := s.clock.Now()
@@ -198,6 +232,8 @@ func (s *System) initializeSystem(ctx context.Context, appCtx context.Context, a
 	})
 
 	s.initializeBusinessSubsystems(ctx)
+
+	s.initializeQuerySubsystems(ctx)
 
 	// Initialize the application subsystem
 	err := app.Initialize(appCtx)

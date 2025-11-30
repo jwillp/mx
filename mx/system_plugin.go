@@ -26,6 +26,9 @@ const (
 	BusinessSubsystemInitializationStartedPluginHookName SystemPluginHookName = "business_subsystem.initialization.started"
 	BusinessSubsystemInitializationEndedPluginHookName   SystemPluginHookName = "business_subsystem.initialization.ended"
 
+	QuerySubsystemInitializationStartedPluginHookName SystemPluginHookName = "query_subsystem.initialization.started"
+	QuerySubsystemInitializationEndedPluginHookName   SystemPluginHookName = "query_subsystem.initialization.ended"
+
 	PluginAddedHookName SystemPluginHookName = "plugin.added"
 )
 
@@ -166,6 +169,26 @@ type BusinessSubsystemInitializationEndedHook struct {
 
 func (e BusinessSubsystemInitializationEndedHook) HookName() SystemPluginHookName {
 	return BusinessSubsystemInitializationEndedPluginHookName
+}
+
+type QuerySubsystemInitializationStartedHook struct {
+	QuerySubsystemName string
+	StartedAt          time.Time
+}
+
+func (e QuerySubsystemInitializationStartedHook) HookName() SystemPluginHookName {
+	return QuerySubsystemInitializationStartedPluginHookName
+}
+
+type QuerySubsystemInitializationEndedHook struct {
+	QuerySubsystemName string
+	StartedAt          time.Time
+	EndedAt            time.Time
+	Error              error
+}
+
+func (e QuerySubsystemInitializationEndedHook) HookName() SystemPluginHookName {
+	return QuerySubsystemInitializationEndedPluginHookName
 }
 
 type PluginAddedHook struct {
