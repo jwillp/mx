@@ -8,6 +8,7 @@ type systemLoggerContextKey struct{}
 
 type systemInfoContextKey struct{}
 type subsystemInfoContextKey struct{}
+type subsystemOriginContextKey struct{}
 
 func newSystemContext(s System) context.Context {
 	ctx := context.Background()
@@ -18,7 +19,17 @@ func newSystemContext(s System) context.Context {
 }
 
 func newSubsystemContext(ctx context.Context, info SubsystemInfo) context.Context {
+	// Track origin: if a subsystem context already exists, use it as origin
+	// otherwise, this is the root subsystem
+	var origin SubsystemInfo
+	if originInfo, ok := ctx.Value(subsystemInfoContextKey{}).(SubsystemInfo); ok {
+		origin = originInfo
+	}
+
 	ctx = context.WithValue(ctx, subsystemInfoContextKey{}, info)
+	if (origin != SubsystemInfo{}) {
+		ctx = context.WithValue(ctx, subsystemOriginContextKey{}, origin)
+	}
 
 	return ctx
 }
@@ -47,4 +58,13 @@ func (c Context) SubsystemInfo() SubsystemInfo {
 	}
 
 	return subsystemInfo
+}
+
+func (c Context) SubsystemOrigin() SubsystemInfo {
+	origin, ok := c.Context.Value(subsystemOriginContextKey{}).(SubsystemInfo)
+	if !ok {
+		return SubsystemInfo{}
+	}
+
+	return origin
 }
