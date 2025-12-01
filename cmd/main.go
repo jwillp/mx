@@ -20,7 +20,7 @@ func main() {
 
 	system.WithBusinessSubsystem(
 		mx.NewBusinessSubsystem("inventory").
-			WithCommandHandler("some.command", misas.CommandHandlerFunc(func(ctx context.Context, cmd misas.Command) misas.CommandResult {
+			WithCommandHandler(SomeCommand{}, misas.CommandHandlerFunc(func(ctx context.Context, cmd misas.Command) misas.CommandResult {
 				return misas.CommandResult{
 					Payload: fmt.Errorf("some command failed: inventory is out of stock"),
 					//Payload: fmt.Errorf("some command failed: failed to publish event: %w", inventoryEventBus.Publish(ctx, SomeEvent{})),
@@ -33,7 +33,7 @@ func main() {
 
 	system.WithQuerySubsystem(
 		mx.NewQuerySubsystem("inventory_reporting").
-			WithQueryHandler("inventory.get_stock", misas.QueryHandlerFunc(func(ctx context.Context, query misas.Query) misas.QueryResult {
+			WithQueryHandler(GetStockQuery{}, misas.QueryHandlerFunc(func(ctx context.Context, query misas.Query) misas.QueryResult {
 				return misas.QueryResult{
 					Payload: 100,
 				}

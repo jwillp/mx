@@ -24,20 +24,24 @@ func NewQuerySubsystem(name string) *QuerySubsystemConf {
 	}
 }
 
-func (qc *QuerySubsystemConf) WithQueryHandler(qt misas.QueryTypeName, h misas.QueryHandler) *QuerySubsystemConf {
-	if qt == "" {
-		panic(fmt.Sprintf("query subsystem %s: query type name cannot be empty", qc.name))
+// WithQueryHandler registers a query handler for the given query type with the system's query bus.
+// It also automatically the query type in the global query registry for serialization purposes.
+func (qc *QuerySubsystemConf) WithQueryHandler(qt misas.Query, h misas.QueryHandler) *QuerySubsystemConf {
+	if qt == nil {
+		panic(fmt.Sprintf("query subsystem %s: query cannot be empty", qc.name))
 	}
 	if h == nil {
 		panic(fmt.Sprintf("query subsystem %s: handler cannot be nil", qc.name))
 	}
 	h = withQueryLogging(h)
 	h = withQueryContextPropagation(qc.name, h)
-	qc.queryHandlers[qt] = h
+	qc.queryHandlers[qt.TypeName()] = h
+	QueryRegistry.Register(qt.TypeName(), qt)
 
 	return qc
 }
 
+// WithEventHandlers registers event handlers for the given event bus name with the system's event buses.
 func (qc *QuerySubsystemConf) WithEventHandlers(eventBusName EventBusName, handlers ...misas.EventHandler) *QuerySubsystemConf {
 	if eventBusName == "" {
 		panic(fmt.Sprintf("query subsystem %s: event bus name cannot be empty", qc.name))

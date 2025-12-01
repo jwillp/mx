@@ -26,19 +26,25 @@ func NewBusinessSubsystem(name string) *BusinessSubsystemConf {
 	}
 }
 
-func (bc *BusinessSubsystemConf) WithCommandHandler(ct misas.CommandTypeName, h misas.CommandHandler) *BusinessSubsystemConf {
-	if ct == "" {
-		panic(fmt.Sprintf("business subsystem %s: command type name cannot be empty", bc.name))
+// WithCommandHandler registers a command handler for the given command type with the system's command bus.
+// It also automatically the command type in the global command registry for serialization purposes.
+func (bc *BusinessSubsystemConf) WithCommandHandler(ct misas.Command, h misas.CommandHandler) *BusinessSubsystemConf {
+	if ct == nil {
+		panic(fmt.Sprintf("business subsystem %s: command cannot be empty", bc.name))
 	}
 	if h == nil {
 		panic(fmt.Sprintf("business subsystem %s: handler cannot be nil", bc.name))
 	}
 	h = withCommandLogging(h)
 	h = withCommandContextPropagation(bc.name, h)
-	bc.commandHandlers[ct] = h
+	bc.commandHandlers[ct.TypeName()] = h
+
+	CommandRegistry.Register(ct.TypeName(), ct)
+
 	return bc
 }
 
+// WithEventHandlers registers event handlers for the given event bus name with the system's event buses.
 func (bc *BusinessSubsystemConf) WithEventHandlers(eventBusName EventBusName, handlers ...misas.EventHandler) *BusinessSubsystemConf {
 	if eventBusName == "" {
 		panic(fmt.Sprintf("business subsystem %s: event bus name cannot be empty", bc.name))
@@ -50,6 +56,15 @@ func (bc *BusinessSubsystemConf) WithEventHandlers(eventBusName EventBusName, ha
 		return h
 	})
 	bc.eventHandlers[eventBusName] = append(bc.eventHandlers[eventBusName], handlers...)
+
+	return bc
+}
+
+// ProducesEvents registers the given events in the global event registry for serialization purposes.
+func (bc *BusinessSubsystemConf) ProducesEvents(events ...misas.Event) *BusinessSubsystemConf {
+	for _, e := range events {
+		EventRegistry.Register(e.TypeName(), e)
+	}
 
 	return bc
 }
